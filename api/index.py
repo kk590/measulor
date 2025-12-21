@@ -414,9 +414,3 @@ def save():
     except:
         return jsonify({'success': False})
 
-# Vercel serverless function handler
-from flask import Flask
-from werkzeug.serving import WSGIRequestHandler
-
-def handler(request):
-    return app(request)
