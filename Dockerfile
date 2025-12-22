@@ -1,27 +1,22 @@
-# Dockerfile for Render deployment
+# Dockerfile for Flask API on Render
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies for OpenCV
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    libgl1-mesa-glx \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python packages
+# Copy requirements first for better caching
 COPY requirements.txt .
+
+# Install Python packages
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy only the API code (not the GUI)
+COPY api ./api
 
 # Expose port
 EXPOSE 5000
 
-# Run the application
-CMD ["python", "main.py"]
+ENV FLASK_APP=api/index.py
+ENV FLASK_ENV=production
+
+# Run Flask app
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
