@@ -1,0 +1,11 @@
+# Requirements for Desktop/Local Development
+# Use this file for running the GUI application locally with camera access
+# Install with: pip install -r requirements-desktop.txt
+
+# Core dependencies
+Flask==2.3.0
+opencv-python==4.8.0.76
+mediapipe
+numpy==1.24.0
+
+# Note: Use opencv-python (NOT opencv-python-headless) for camera support
