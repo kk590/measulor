@@ -9,3 +9,4 @@ mediapipe>=0.10.9
 numpy>=1.26.0
 
 # Note: Use opencv-python (NOT opencv-python-headless) for camera support
+Pillow>=10.0.0
