@@ -6,6 +6,7 @@ from .pose_detector import PoseDetector
 from .image_recognition import ReferenceObjectDetector, BodyShapeClassifier
 from .measurement import MeasurementCalculator
 from .utils import resize_image
+import webbrowser
 
 class App:
     def __init__(self, window, window_title):
@@ -99,3 +100,4 @@ class App:
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
 
         self.window.after(self.delay, self.update)
+
