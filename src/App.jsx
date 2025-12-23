@@ -1,384 +1,268 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+import React, { useState, useRef } from 'react';
 
-export default function AITailor3D() {
-  const containerRef = useRef(null);
-  const videoRef = useRef(null);
-  const [measurements, setMeasurements] = useState(null);
-  const [calibrated, setCalibrated] = useState(false);
-  const [username, setUsername] = useState('Guest');
-  const [scene, setScene] = useState(null);
-  const [bodyModel, setBodyModel] = useState(null);
-  const sceneRef = useRef(null);
+export default function MeasulorMobile() {
+  const [status, setStatus] = useState('idle'); // idle | uploading | processing | done | error
+  const [result, setResult] = useState(null);
+  const [processingTime, setProcessingTime] = useState(null);
+  const fileInputRef = useRef(null);
 
-  // Initialize Three.js Scene
-  useEffect(() => {
-    if (!containerRef.current) return;
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
+    setStatus('uploading');
+    setResult(null);
+    setProcessingTime(null);
 
-    const newScene = new THREE.Scene();
-    newScene.background = new THREE.Color(0x1a1a2e);
+    const startTime = Date.now();
+    const formData = new FormData();
+    formData.append('image', file);
 
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 2);
+    try {
+      setStatus('processing');
+      
+      const res = await fetch('/api/measure', {
+        method: 'POST',
+        body: formData,
+      });
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
-    containerRef.current.appendChild(renderer.domElement);
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    newScene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 7);
-    directionalLight.castShadow = true;
-    newScene.add(directionalLight);
-
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate);
-      if (bodyModel) {
-        bodyModel.rotation.y += 0.003;
+      if (!res.ok) {
+        throw new Error('Measurement failed');
       }
-      renderer.render(newScene, camera);
-    };
-    animate();
 
-    sceneRef.current = { scene: newScene, camera, renderer };
-    setScene(newScene);
-
-    return () => {
-      renderer.dispose();
-      if (containerRef.current && renderer.domElement.parentNode === containerRef.current) {
-        containerRef.current.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
-
-  // Create 3D Body Model
-  const create3DBody = (meas) => {
-    if (!sceneRef.current) return;
-    const { scene: threeScene } = sceneRef.current;
-
-    // Remove old model
-    if (bodyModel) {
-      threeScene.remove(bodyModel);
+      const data = await res.json();
+      const endTime = Date.now();
+      const timeTaken = ((endTime - startTime) / 1000).toFixed(1);
+      
+      setResult(data.measurements);
+      setProcessingTime(timeTaken);
+      setStatus('done');
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
     }
 
-    const group = new THREE.Group();
-
-    // Normalize measurements to reasonable scale
-    const scale = 0.01; // Convert cm to units
-    const shoulder = (meas['Shoulder Width'] || 40) * scale;
-    const armLength = (meas['Left Arm Length'] || 55) * scale;
-    const torsoLen = (meas['Torso Length'] || 50) * scale;
-    const hipWidth = (meas['Hip Width'] || 35) * scale;
-    const legLen = (meas['Leg Length'] || 80) * scale;
-
-    // Material
-    const skinMat = new THREE.MeshPhongMaterial({ color: 0xffdbac });
-    const jointMat = new THREE.MeshPhongMaterial({ color: 0xff6b9d });
-
-    // HEAD
-    const headGeom = new THREE.SphereGeometry(shoulder * 0.25, 32, 32);
-    const head = new THREE.Mesh(headGeom, skinMat);
-    head.position.y = torsoLen + shoulder * 0.15;
-    head.castShadow = true;
-    group.add(head);
-
-    // TORSO (cylinder)
-    const torsoGeom = new THREE.CylinderGeometry(shoulder * 0.35, hipWidth * 0.35, torsoLen, 32);
-    const torso = new THREE.Mesh(torsoGeom, skinMat);
-    torso.position.y = torsoLen * 0.5;
-    torso.castShadow = true;
-    group.add(torso);
-
-    // LEFT ARM
-    const armGeom = new THREE.CylinderGeometry(shoulder * 0.08, shoulder * 0.07, armLength, 16);
-    const leftArm = new THREE.Mesh(armGeom, skinMat);
-    leftArm.position.set(-shoulder * 0.4, torsoLen * 0.8, 0);
-    leftArm.rotation.z = Math.PI * 0.3;
-    leftArm.castShadow = true;
-    group.add(leftArm);
-
-    // RIGHT ARM
-    const rightArm = new THREE.Mesh(armGeom, skinMat);
-    rightArm.position.set(shoulder * 0.4, torsoLen * 0.8, 0);
-    rightArm.rotation.z = -Math.PI * 0.3;
-    rightArm.castShadow = true;
-    group.add(rightArm);
-
-    // LEFT LEG
-    const legGeom = new THREE.CylinderGeometry(hipWidth * 0.12, hipWidth * 0.1, legLen, 16);
-    const leftLeg = new THREE.Mesh(legGeom, skinMat);
-    leftLeg.position.set(-hipWidth * 0.2, -legLen * 0.5, 0);
-    leftLeg.castShadow = true;
-    group.add(leftLeg);
-
-    // RIGHT LEG
-    const rightLeg = new THREE.Mesh(legGeom, skinMat);
-    rightLeg.position.set(hipWidth * 0.2, -legLen * 0.5, 0);
-    rightLeg.castShadow = true;
-    group.add(rightLeg);
-
-    // JOINTS (spheres)
-    const jointGeom = new THREE.SphereGeometry(shoulder * 0.05, 16, 16);
-    
-    const joints = [
-      { pos: [-shoulder * 0.4, torsoLen * 0.8, 0] },
-      { pos: [shoulder * 0.4, torsoLen * 0.8, 0] },
-      { pos: [-hipWidth * 0.2, -legLen * 0.5, 0] },
-      { pos: [hipWidth * 0.2, -legLen * 0.5, 0] },
-    ];
-
-    joints.forEach(joint => {
-      const sphereJoint = new THREE.Mesh(jointGeom, jointMat);
-      sphereJoint.position.set(...joint.pos);
-      sphereJoint.castShadow = true;
-      group.add(sphereJoint);
-    });
-
-    threeScene.add(group);
-    setBodyModel(group);
-  };
-
-  // Camera setup
-  useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } 
-    })
-    .then(stream => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    })
-    .catch(err => alert('Camera error: ' + err.message));
-  }, []);
-
-  const calibrate = async () => {
-    setCalibrated(true);
-    alert('System calibrated!');
-  };
-
-  const measureNow = async () => {
-    if (!calibrated) {
-      alert('Please calibrate first!');
-      return;
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
-
-    // Mock measurements (in real app, these come from AI)
-    const mockMeasurements = {
-      'Shoulder Width': 38 + Math.random() * 4,
-      'Left Arm Length': 52 + Math.random() * 4,
-      'Torso Length': 48 + Math.random() * 4,
-      'Inseam': 75 + Math.random() * 5,
-      'Hip Width': 35 + Math.random() * 4,
-      'Leg Length': 82 + Math.random() * 5,
-    };
-
-    setMeasurements(mockMeasurements);
-    create3DBody(mockMeasurements);
   };
 
-  const saveMeasurements = () => {
-    if (!measurements) {
-      alert('No measurements to save!');
-      return;
-    }
-    alert(`Measurements saved for ${username}!`);
+  const handleRetake = () => {
+    setStatus('idle');
+    setResult(null);
+    setProcessingTime(null);
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#0f0f1e', color: '#fff' }}>
-      {/* 3D View */}
-      <div
-        ref={containerRef}
-        style={{
-          flex: 1,
-          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        }}
-      />
-
-      {/* Control Panel */}
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: 'white'
+    }}>
+      {/* Header */}
       <div style={{
-        width: '350px',
-        padding: '30px',
-        overflowY: 'auto',
-        background: '#0f0f1e',
-        borderLeft: '2px solid #667eea',
+        textAlign: 'center',
+        marginBottom: '30px'
       }}>
-        <h1 style={{ fontSize: '1.8em', marginBottom: '20px', color: '#667eea' }}>
-          👕 AI Tailor 3D
-        </h1>
+        <h1 style={{ fontSize: '2em', marginBottom: '10px' }}>👕 Measulor</h1>
+        <p style={{ fontSize: '1.1em', opacity: 0.9 }}>AI Body Measurement System</p>
+      </div>
 
-        {/* Video Preview */}
-        <div style={{
-          marginBottom: '20px',
-          borderRadius: '10px',
-          overflow: 'hidden',
-          border: '2px solid #667eea',
-        }}>
-          <video
-            ref={videoRef}
-            style={{ width: '100%', height: 'auto', display: 'block' }}
-            autoPlay
-            playsInline
-          />
-        </div>
-
-        {/* Status */}
-        <div style={{
-          background: '#1a1a2e',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          borderLeft: '4px solid #667eea',
-        }}>
-          <div style={{ marginBottom: '10px' }}>
-            <span style={{ color: '#999' }}>Calibration: </span>
-            <span style={{ color: calibrated ? '#48bb78' : '#f56565', fontWeight: 'bold' }}>
-              {calibrated ? '✅ Calibrated' : '❌ Not Calibrated'}
-            </span>
-          </div>
-          <div>
-            <span style={{ color: '#999' }}>3D Model: </span>
-            <span style={{ color: measurements ? '#48bb78' : '#f56565', fontWeight: 'bold' }}>
-              {measurements ? '✅ Generated' : '❌ Waiting'}
-            </span>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <button
-          onClick={calibrate}
+      {/* Upload Section */}
+      <div style={{
+        background: 'rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '15px',
+        padding: '25px',
+        marginBottom: '20px'
+      }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileSelect}
+          disabled={status === 'processing' || status === 'uploading'}
+          style={{ display: 'none' }}
+          id="photo-input"
+        />
+        
+        <label
+          htmlFor="photo-input"
           style={{
+            display: 'block',
             width: '100%',
-            padding: '12px',
-            marginBottom: '10px',
-            background: '#667eea',
+            padding: '20px',
+            background: status === 'processing' || status === 'uploading' ? '#999' : '#48bb78',
             color: 'white',
             border: 'none',
-            borderRadius: '8px',
-            fontSize: '1em',
+            borderRadius: '12px',
+            fontSize: '1.1em',
             fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'all 0.3s',
+            textAlign: 'center',
+            cursor: status === 'processing' || status === 'uploading' ? 'not-allowed' : 'pointer',
+            transition: 'all 0.3s'
           }}
-          onMouseOver={(e) => e.target.style.background = '#5568d3'}
-          onMouseOut={(e) => e.target.style.background = '#667eea'}
         >
-          📏 Calibrate System
-        </button>
+          {status === 'idle' && '📸 Take Photo / Upload'}
+          {status === 'uploading' && '⏳ Uploading...'}
+          {status === 'processing' && '🔄 Processing...'}
+          {status === 'done' && '✅ Measurements Ready!'}
+          {status === 'error' && '❌ Try Again'}
+        </label>
+      </div>
 
-        <button
-          onClick={measureNow}
-          style={{
-            width: '100%',
-            padding: '12px',
-            marginBottom: '10px',
-            background: '#48bb78',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '1em',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'all 0.3s',
-          }}
-          onMouseOver={(e) => e.target.style.background = '#38a169'}
-          onMouseOut={(e) => e.target.style.background = '#48bb78'}
-        >
-          📊 Generate 3D Model
-        </button>
-
-        {/* Measurements */}
-        {measurements && (
+      {/* Status Message */}
+      {status === 'processing' && (
+        <div style={{
+          background: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px',
+          textAlign: 'center'
+        }}>
           <div style={{
-            background: '#1a1a2e',
-            padding: '15px',
-            borderRadius: '8px',
-            marginBottom: '20px',
+            fontSize: '2em',
+            marginBottom: '10px',
+            animation: 'spin 2s linear infinite'
           }}>
-            <h3 style={{ marginBottom: '15px', color: '#667eea' }}>📐 Measurements (cm)</h3>
-            {Object.entries(measurements).map(([key, value]) => (
+            ⚙️
+          </div>
+          <p style={{ fontSize: '1.1em', marginBottom: '5px' }}>
+            Processing your measurements...
+          </p>
+          <p style={{ fontSize: '0.9em', opacity: 0.8 }}>
+            This usually takes 5-10 seconds
+          </p>
+        </div>
+      )}
+
+      {/* Results */}
+      {status === 'done' && result && (
+        <div>
+          {/* Processing Time */}
+          <div style={{
+            background: 'rgba(72, 187, 120, 0.2)',
+            border: '2px solid #48bb78',
+            borderRadius: '12px',
+            padding: '15px',
+            marginBottom: '20px',
+            textAlign: 'center'
+          }}>
+            <p style={{ fontSize: '1em', marginBottom: '5px' }}>
+              ⚡ Results ready in <strong>{processingTime}s</strong>
+            </p>
+          </div>
+
+          {/* Measurements Table */}
+          <div style={{
+            background: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '15px',
+            padding: '25px',
+            marginBottom: '20px'
+          }}>
+            <h2 style={{
+              fontSize: '1.5em',
+              marginBottom: '20px',
+              borderBottom: '2px solid rgba(255,255,255,0.2)',
+              paddingBottom: '10px'
+            }}>
+              📐 Your Measurements
+            </h2>
+            
+            {Object.entries(result).map(([key, value]) => (
               <div key={key} style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                padding: '8px 0',
-                borderBottom: '1px solid #333',
-                fontSize: '0.9em',
+                padding: '12px 0',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                fontSize: '1em'
               }}>
-                <span style={{ color: '#999' }}>{key}</span>
-                <span style={{ color: '#667eea', fontWeight: 'bold' }}>{value.toFixed(1)} cm</span>
+                <span style={{ textTransform: 'capitalize', opacity: 0.9 }}>
+                  {key.replace(/_/g, ' ')}
+                </span>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
+                  {typeof value === 'number' ? value.toFixed(1) : value} cm
+                </span>
               </div>
             ))}
           </div>
-        )}
 
-        {/* User Input & Save */}
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Enter your name"
-          style={{
-            width: '100%',
-            padding: '10px',
-            marginBottom: '10px',
-            background: '#1a1a2e',
-            border: '2px solid #667eea',
-            borderRadius: '8px',
-            color: 'white',
-            fontSize: '0.9em',
-            boxSizing: 'border-box',
-          }}
-        />
-
-        <button
-          onClick={saveMeasurements}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: '#f5576c',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '1em',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'all 0.3s',
-          }}
-          onMouseOver={(e) => e.target.style.background = '#e53e3e'}
-          onMouseOut={(e) => e.target.style.background = '#f5576c'}
-        >
-          💾 Save 3D Model
-        </button>
-
-        {/* Info */}
-        <div style={{
-          marginTop: '20px',
-          padding: '15px',
-          background: '#1a1a2e',
-          borderRadius: '8px',
-          fontSize: '0.85em',
-          color: '#999',
-          lineHeight: '1.6',
-        }}>
-          <strong style={{ color: '#667eea' }}>💡 How it works:</strong>
-          <br />
-          1. Click "Calibrate" to start
-          <br />
-          2. Click "Generate 3D Model" to create your 3D body
-          <br />
-          3. View your measurements
-          <br />
-          4. Save your profile
+          {/* Retake Button */}
+          <button
+            onClick={handleRetake}
+            style={{
+              width: '100%',
+              padding: '18px',
+              background: '#4299e1',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '1.1em',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+          >
+            📸 Take Another Photo
+          </button>
         </div>
+      )}
+
+      {/* Error State */}
+      {status === 'error' && (
+        <div style={{
+          background: 'rgba(245, 87, 108, 0.2)',
+          border: '2px solid #f5576c',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px',
+          textAlign: 'center'
+        }}>
+          <p style={{ fontSize: '1.1em', marginBottom: '10px' }}>
+            ❌ Unable to process the image
+          </p>
+          <p style={{ fontSize: '0.9em', opacity: 0.9 }}>
+            Please try again with better lighting and a full-body photo
+          </p>
+        </div>
+      )}
+
+      {/* Instructions */}
+      <div style={{
+        background: 'rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '15px',
+        padding: '25px',
+        marginTop: '20px'
+      }}>
+        <h3 style={{ fontSize: '1.3em', marginBottom: '15px' }}>💡 Instructions</h3>
+        <ul style={{
+          fontSize: '0.95em',
+          lineHeight: '1.8',
+          paddingLeft: '20px',
+          opacity: 0.95
+        }}>
+          <li>Stand 6-8 feet away from the camera</li>
+          <li>Ensure your full body is visible</li>
+          <li>Stand in a T-pose for best results</li>
+          <li>Make sure the lighting is good</li>
+          <li>Wear fitted clothing</li>
+        </ul>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
+
