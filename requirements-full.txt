@@ -1,0 +1,6 @@
+Flask==2.3.0
+Pillow==10.1.0
+mediapipe==0.10.8
+numpy==1.24.0
+opencv-python-headless==4.8.1.78
+gunicorn==21.2.0
