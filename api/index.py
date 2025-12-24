@@ -72,6 +72,7 @@ def index():
         <h1>👕 Measulor</h1>
         <p>AI Body Measurement Tool</p>
         <div class="demo-badge">🌟 DEMO MODE - Simulated Measurements</div>
+                        <a href="#pricing" class="upgrade-btn" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; margin-left: 15px; font-size: 0.9em; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">💎 Upgrade to Premium</a>
     </div>
     <div class="camera-box">
         <video id="video" autoplay playsinline></video>
@@ -155,6 +156,44 @@ def index():
         }
 
     </script>
+
+        <!-- Pricing Section -->
+    <div id="pricing" style="max-width: 900px; margin: 60px auto; padding: 40px 20px; background: rgba(255,255,255,0.05); border-radius: 20px; backdrop-filter: blur(10px);">
+        <h2 style="text-align: center; font-size: 2.5em; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">💎 Upgrade to Premium</h2>
+        <p style="text-align: center; font-size: 1.1em; color: rgba(255,255,255,0.8); margin-bottom: 40px;">Get AI-powered body measurements with lifetime access</p>
+        
+        <div style="background: rgba(255,255,255,0.1); border-radius: 15px; padding: 35px; max-width: 500px; margin: 0 auto; border: 2px solid rgba(102, 126, 234, 0.3);">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <div style="font-size: 3.5em; font-weight: 700; color: #fff;">$5.99</div>
+                <div style="font-size: 1.1em; color: rgba(255,255,255,0.7); margin-top: 5px;">One-time payment • Lifetime access</div>
+            </div>
+            
+            <div style="text-align: left; margin: 25px 0; font-size: 1em;">
+                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
+                    <span style="position: absolute; left: 0;">✅</span> Real AI-powered measurements (MediaPipe)
+                </div>
+                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
+                    <span style="position: absolute; left: 0;">✅</span> Shoulders, Chest, Waist, Hips, Arms, Legs
+                </div>
+                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
+                    <span style="position: absolute; left: 0;">✅</span> Save & track measurement history
+                </div>
+                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
+                    <span style="position: absolute; left: 0;">✅</span> Export measurements as CSV/PDF
+                </div>
+                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
+                    <span style="position: absolute; left: 0;">✅</span> Mobile-friendly camera interface
+                </div>
+                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
+                    <span style="position: absolute; left: 0;">✅</span> No subscription • Pay once, use forever
+                </div>
+            </div>
+            
+            <a href="https://gum.co/measulor" target="_blank" style="display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px; border-radius: 12px; text-align: center; text-decoration: none; font-weight: 700; font-size: 1.2em; margin-top: 25px; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🚀 Get Premium Access Now</a>
+            
+            <p style="text-align: center; font-size: 0.85em; color: rgba(255,255,255,0.5); margin-top: 15px;">Instant access after payment via Gumroad</p>
+        </div>
+    </div>
 </body>
 </html>'''
 
