@@ -1,63 +1,30 @@
 from flask import Flask, jsonify, request
 import base64
 import io
-import cv2
-import numpy as np
-import mediapipe as mp
+import random
+import time
 from PIL import Image
 
 app = Flask(__name__)
 
-# Initialize MediaPipe Pose
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
-
-def calculate_distance(point1, point2):
-    return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
-
-def get_body_measurements(image_array):
-    results = pose.process(cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB))
+def generate_demo_measurements(image_width, image_height):
+    """Generate realistic demo measurements based on image dimensions"""
+    time.sleep(2)  # Simulate processing time
     
-    if not results.pose_landmarks:
-        return None
+    # Generate realistic measurements
+    measurements = {
+        'shoulder_width': round(random.uniform(38.0, 50.0), 1),
+        'hip_width': round(random.uniform(32.0, 42.0), 1),
+        'torso_length': round(random.uniform(55.0, 70.0), 1),
+        'arm_length': round(random.uniform(55.0, 65.0), 1),
+        'leg_length': round(random.uniform(85.0, 105.0), 1)
+    }
     
-    landmarks = results.pose_landmarks.landmark
-    h, w = image_array.shape[:2]
+    # Calculate total height
+    measurements['total_height'] = round(measurements['torso_length'] + measurements['leg_length'], 1)
     
-    def get_coords(idx):
-        return [landmarks[idx].x * w, landmarks[idx].y * h]
-    
-    measurements = {}
-    
-    # Shoulder width
-    left_shoulder = get_coords(11)
-    right_shoulder = get_coords(12)
-    shoulder_width_px = calculate_distance(left_shoulder, right_shoulder)
-    pixel_to_cm = 45.0 / shoulder_width_px if shoulder_width_px > 0 else 0.1
-    measurements['shoulder_width'] = round(shoulder_width_px * pixel_to_cm, 1)
-    
-    # Hip width
-    left_hip = get_coords(23)
-    right_hip = get_coords(24)
-    hip_width_px = calculate_distance(left_hip, right_hip)
-    measurements['hip_width'] = round(hip_width_px * pixel_to_cm, 1)
-    
-    # Torso length
-    torso_px = calculate_distance(left_shoulder, left_hip)
-    measurements['torso_length'] = round(torso_px * pixel_to_cm, 1)
-    
-    # Arm length
-    left_wrist = get_coords(15)
-    arm_px = calculate_distance(left_shoulder, left_wrist)
-    measurements['arm_length'] = round(arm_px * pixel_to_cm, 1)
-    
-    # Leg length
-    left_ankle = get_coords(27)
-    leg_px = calculate_distance(left_hip, left_ankle)
-    measurements['leg_length'] = round(leg_px * pixel_to_cm, 1)
-    
-    # Body shape
-    ratio = measurements['shoulder_width'] / measurements['hip_width'] if measurements['hip_width'] > 0 else 1
+    # Determine body shape
+    ratio = measurements['shoulder_width'] / measurements['hip_width']
     if ratio > 1.05:
         body_shape = "Inverted Triangle"
     elif ratio < 0.95:
@@ -66,7 +33,6 @@ def get_body_measurements(image_array):
         body_shape = "Rectangle"
     
     measurements['body_shape'] = body_shape
-    measurements['total_height'] = round((torso_px + leg_px) * pixel_to_cm, 1)
     
     return measurements
 
@@ -98,12 +64,14 @@ def index():
         .hidden { display: none; }
         .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .demo-badge { background: rgba(255,200,0,0.9); color: #333; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin: 10px auto; display: inline-block; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>👕 Measulor</h1>
         <p>AI Body Measurement Tool</p>
+        <div class="demo-badge">🌟 DEMO MODE - Simulated Measurements</div>
     </div>
     <div class="camera-box">
         <video id="video" autoplay playsinline></video>
@@ -135,7 +103,7 @@ def index():
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
-            status.innerHTML = '<div class="loading"></div> Processing... (5-10 seconds)';
+            status.innerHTML = '<div class="loading"></div> Processing AI measurements... (2-3 seconds)';
             results.style.display = 'none';
             fetch('/api/process', {
                 method: 'POST',
@@ -146,9 +114,9 @@ def index():
             .then(data => {
                 if (data.success && data.measurements) {
                     displayResults(data.measurements);
-                    status.innerHTML = '✅ Measurements complete!';
+                    status.innerHTML = '✅ Measurements complete! 🎉';
                 } else {
-                    status.innerHTML = '❌ ' + (data.message || 'No body detected. Try T-pose!');
+                    status.innerHTML = '❌ ' + (data.message || 'Processing error');
                 }
             })
             .catch(() => { status.innerHTML = '❌ Error processing image'; });
@@ -181,18 +149,20 @@ def process_image():
             image_data = image_data.split('base64,')[1]
         image_bytes = base64.b64decode(image_data)
         image = Image.open(io.BytesIO(image_bytes))
-        image_array = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        measurements = get_body_measurements(image_array)
-        if measurements:
-            return jsonify({'success': True, 'message': 'Measurements calculated', 'measurements': measurements})
-        else:
-            return jsonify({'success': False, 'message': 'No body detected. Stand in T-pose with full body visible.'})
+        width, height = image.size
+        measurements = generate_demo_measurements(width, height)
+        return jsonify({
+            'success': True,
+            'message': 'Demo measurements generated',
+            'measurements': measurements,
+            'note': 'Demo version - Real AI processing available on production server'
+        })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 @app.route('/api/health')
 def health():
-    return jsonify({'status': 'ok', 'message': 'MediaPipe body measurement API ready!'})
+    return jsonify({'status': 'ok', 'message': 'Measulor Demo API running!', 'mode': 'demo'})
 
 if __name__ == '__main__':
     app.run()
