@@ -78,6 +78,7 @@ def index():
         <canvas id="canvas"></canvas>
         <div class="controls">
             <button class="btn-primary" id="startBtn" onclick="startCamera()">Start Camera</button>
+                            <button class="btn-secondary" id="switchBtn" style="display:none;" onclick="switchCamera()">🔄 Switch Camera</button>
             <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto()">Measure Now</button>
         </div>
     </div>
@@ -89,14 +90,19 @@ def index():
         const startBtn = document.getElementById('startBtn');
         const captureBtn = document.getElementById('captureBtn');
         const status = document.getElementById('status');
+                const switchBtn = document.getElementById('switchBtn');
+        let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+        let currentStream = null;
+
         const results = document.getElementById('results');
         async function startCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } });
-                video.srcObject = stream;
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } } });                video.srcObject = stream;
                 startBtn.classList.add('hidden');
+                            currentStream = stream;
                 captureBtn.classList.remove('hidden');
                 status.innerHTML = '✅ Camera active! Stand in T-pose and tap Measure';
+                            switchBtn.style.display = 'inline-block';
             } catch (err) { status.innerHTML = '❌ Camera access denied'; }
         }
         function capturePhoto() {
@@ -134,6 +140,20 @@ def index():
             `;
             results.style.display = 'block';
         }
+
+        async function switchCamera() {
+            // Stop current stream
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            
+            // Toggle facing mode
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            
+            // Restart camera with new facing mode
+            await startCamera();
+        }
+
     </script>
 </body>
 </html>'''
