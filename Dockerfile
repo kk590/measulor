@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only the API code (not the GUI)
 COPY api ./api
+COPY railway_app.py .
 
 # Expose port
 EXPOSE 5000
