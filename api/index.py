@@ -165,7 +165,7 @@ def index():
         <div style="background: rgba(255,255,255,0.1); border-radius: 15px; padding: 35px; max-width: 500px; margin: 0 auto; border: 2px solid rgba(102, 126, 234, 0.3);">
             <div style="text-align: center; margin-bottom: 25px;">
                 <div style="font-size: 3.5em; font-weight: 700; color: #fff;">$5.99</div>
-                <div style="font-size: 1.1em; color: rgba(255,255,255,0.7); margin-top: 5px;">One-time payment • Lifetime access</div>
+                <div style="font-size: 1.1em; color: rgba(255,255,255,0.7); margin-top: 5px;">Monthly payment</div>
             </div>
             
             <div style="text-align: left; margin: 25px 0; font-size: 1em;">
