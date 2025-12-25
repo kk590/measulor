@@ -142,4 +142,6 @@ def measure():
 
     except Exception as e:
         return jsonify({
-            'success': False
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
