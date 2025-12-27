@@ -11,10 +11,9 @@ PRICING = {
 @pricing_bp.route('/api/pricing', methods=['GET'])
 def get_pricing():
     return jsonify({'plans': list(PRICING.keys()), 'pricing': PRICING})
-EOF
 
-# Create subscription.py file
-cat > subscription.py << 'EOF'
+
+
 from flask import Blueprint, jsonify, request
 subscription_bp = Blueprint('subscription', __name__)
 
@@ -22,4 +21,4 @@ subscription_bp = Blueprint('subscription', __name__)
 def verify_payment():
     data = request.get_json()
     return jsonify({'status': 'success', 'tier': data.get('tier')})
-EOF
+
