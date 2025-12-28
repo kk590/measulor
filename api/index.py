@@ -6,10 +6,11 @@ import time
 from PIL import Image
 from pricing import pricing_bp
 from pricing import subscription_bp
-app.register_blueprint(subscription_bp)
-app.register_blueprint(pricing_bp)
-
 app = Flask(__name__)
+
+# Register blueprints
+app.register_blueprint(pricing_bp)
+app.register_blueprint(subscription_bp)
 
 def generate_demo_measurements(image_width, image_height):
     """Generate realistic demo measurements based on image dimensions"""
