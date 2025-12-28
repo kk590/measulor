@@ -5,6 +5,8 @@ import random
 import time
 from PIL import Image
 from pricing import pricing_bp
+from pricing import subscription_bp
+app.register_blueprint(subscription_bp)
 app.register_blueprint(pricing_bp)
 
 app = Flask(__name__)
