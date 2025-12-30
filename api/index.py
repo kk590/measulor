@@ -6,11 +6,13 @@ import time
 from PIL import Image
 from pricing import pricing_bp
 from pricing import subscription_bp
+from payment import payment_bp
 app = Flask(__name__)
 
 # Register blueprints
 app.register_blueprint(pricing_bp)
 app.register_blueprint(subscription_bp)
+app.register_blueprint(payment_bp)
 
 def generate_demo_measurements(image_width, image_height):
     """Generate realistic demo measurements based on image dimensions"""
@@ -77,7 +79,7 @@ def index():
         <h1>👕 Measulor</h1>
         <p>AI Body Measurement Tool</p>
         <div class="demo-badge">🌟 DEMO MODE - Simulated Measurements</div>
-                        <a href="#pricing" class="upgrade-btn" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; margin-left: 15px; font-size: 0.9em; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">💎 Upgrade to Premium</a>
+                        <a href="/payment" class="upgrade-btn" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; margin-left: 15px; font-size: 0.9em; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">💎 Upgrade to Premium</a>
     </div>
     <div class="camera-box">
         <video id="video" autoplay playsinline></video>
@@ -194,7 +196,7 @@ def index():
                 </div>
             </div>
             
-            <a href="#pricing" target="_blank" style="display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px; border-radius: 12px; text-align: center; text-decoration: none; font-weight: 700; font-size: 1.2em; margin-top: 25px; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🚀 Get Premium Access Now</a>
+            <a href="/payment" target="_blank" style="display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px; border-radius: 12px; text-align: center; text-decoration: none; font-weight: 700; font-size: 1.2em; margin-top: 25px; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🚀 Get Premium Access Now</a>
             
             <p style="text-align: center; font-size: 0.85em; color: rgba(255,255,255,0.5); margin-top: 15px;">Instant access after payment via Gumroad</p>
         </div>
