@@ -191,9 +191,6 @@ def index():
                 <div style="margin: 12px 0; padding-left: 25px; position: relative;">
                     <span style="position: absolute; left: 0;">✅</span> Mobile-friendly camera interface
                 </div>
-                <div style="margin: 12px 0; padding-left: 25px; position: relative;">
-                    <span style="position: absolute; left: 0;">✅</span> No subscription • Pay once, use forever
-                </div>
             </div>
             
             <a href="/payment" target="_blank" style="display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px; border-radius: 12px; text-align: center; text-decoration: none; font-weight: 700; font-size: 1.2em; margin-top: 25px; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🚀 Get Premium Access Now</a>
