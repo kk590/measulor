@@ -195,7 +195,6 @@ def index():
             
             <a href="/payment" target="_blank" style="display: block; background: linear-gradient(135deg, #007BFF 0%, #FFFFFF 100%); color: white; padding: 18px; border-radius: 12px; text-align: center; text-decoration: none; font-weight: 700; font-size: 1.2em; margin-top: 25px; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🚀 Get Premium Access Now</a>
             
-            <p style="text-align: center; font-size: 0.85em; color: rgba(255,255,255,0.5); margin-top: 15px;">Instant access after payment via Gumroad</p>
         </div>
     </div>
 </body>
