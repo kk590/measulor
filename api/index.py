@@ -48,6 +48,8 @@ def index():
     return '''<!DOCTYPE html>
 <html>
 <head>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4630566819144819"
+     crossorigin="anonymous"></script>
     <title>Measulor - AI Body Measurement</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
