@@ -1,6 +1,5 @@
 # Hybrid Payment System for Measulor
-# Instamojo (Auto) + Manual UPI (Backup) - No PAN Required!
-
+# Manual UPI Payment System for Measulor - No PAN Required!
 from flask import Blueprint, render_template_string, request, jsonify, redirect
 import os
 import secrets
@@ -10,11 +9,6 @@ import requests
 
 payment_bp = Blueprint('payment', __name__)
 
-# Instamojo Configuration (No PAN needed initially!)
-# Sign up: https://www.instamojo.com/
-INSTAMOJO_API_KEY = os.getenv('INSTAMOJO_API_KEY', 'test_YOUR_API_KEY')
-INSTAMOJO_AUTH_TOKEN = os.getenv('INSTAMOJO_AUTH_TOKEN', 'test_YOUR_AUTH_TOKEN')
-INSTAMOJO_ENDPOINT = 'https://test.instamojo.com/api/1.1/'  # Use 'https://www.instamojo.com/api/1.1/' for live
 
 # Your UPI ID for manual payments (FREE - 0% fees)
 YOUR_UPI_ID = os.getenv('UPI_ID', 'yourname@okaxis')  # Replace with your UPI ID
