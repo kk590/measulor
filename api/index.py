@@ -4,9 +4,9 @@ import io
 import random
 import time
 from PIL import Image
-from pricing import pricing_bp
-from pricing import subscription_bp
-from payment import payment_bp
+from .pricing import pricing_bp
+from .pricing import subscription_bp
+from .payment import payment_bp
 app = Flask(__name__)
 
 # Register blueprints
