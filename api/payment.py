@@ -5,8 +5,6 @@ import os
 import secrets
 import json
 from datetime import datetime
-import requests
-
 payment_bp = Blueprint('payment', __name__)
 
 # Your UPI ID for manual payments (FREE - 0% fees)
