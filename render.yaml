@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: measulor-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-full.txt
+    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT api.measure:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PYTHONUNBUFFERED
+        value: 1
