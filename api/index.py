@@ -81,7 +81,7 @@ def index():
         <h1>👕 Measulor</h1>
         <p>AI Body Measurement Tool</p>
         <div class="demo-badge">🌟 DEMO MODE - Simulated Measurements</div>
-                        <a href="https://measulor-1.onrender.com/payment" class="upgrade-btn" style="display: inline-block; background: linear-gradient(135deg, #007BFF 0%, #FFFFFF 100%); color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; margin-left: 15px; font-size: 0.9em; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">💎 84
+                        <a href="https://measulor.vercel.app/payment" class="upgrade-btn" style="display: inline-block; background: linear-gradient(135deg, #007BFF 0%, #FFFFFF 100%); color: white; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; margin-left: 15px; font-size: 0.9em; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">💎 Measulor Premium
                         </a>
     </div>
     <div class="camera-box">
