@@ -169,7 +169,7 @@ def index():
 
         <!-- Pricing Section -->
     <div id="pricing" style="max-width: 900px; margin: 60px auto; padding: 40px 20px; background: rgba(255,255,255,0.05); border-radius: 20px; backdrop-filter: blur(10px);">
-        <h2 style="text-align: center; font-size: 2.5em; margin-bottom: 15px; background: linear-gradient(135deg, #007BFF 0%, #FFFFFF 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">💎 84
+        <h2 style="text-align: center; font-size: 2.5em; margin-bottom: 15px; background: linear-gradient(135deg, #007BFF 0%, #FFFFFF 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">💎 Measulor Premium
         </h2>
         <p style="text-align: center; font-size: 1.1em; color: rgba(255,255,255,0.8); margin-bottom: 40px;">Get AI-powered body measurements on your buisness needs</p>
         
