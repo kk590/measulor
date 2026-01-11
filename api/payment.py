@@ -37,9 +37,43 @@ PAYMENT_PAGE_HTML = '''<!DOCTYPE html>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
             <title>Measulor Premium Payment</title>
-            <style>*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,sans-serif}body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}.container{max-width:600px;margin:0 auto}.header{text-align:center;color:white;margin-bottom:30px}.header h1{font-size:32px;margin-bottom:10px}.card{background:white;border-radius:16px;padding:30px;margin:20px 0;box-shadow:0 20px 60px rgba(0,0,0,0.3)}.price{text-align:center;margin-bottom:30px}.price-amount{font-size:48px;font-weight:700;color:#1a202c}.price-period{color:#718096;margin-top:5px}.features{margin:20px 0}.feature{padding:12px 0;border-bottom:1px solid #e2e8f0;display:flex;align-items:center}.feature:last-child{border:none}.feature-icon{color:#48bb78;margin-right:10px;font-size:18px}.payment-options{display:grid;gap:15px;margin-top:30px}.payment-btn{padding:18px;border:2px solid #e2e8f0;border-radius:12px;background:white;cursor:pointer;transition:all .3s;text-align:left}.payment-btn:hover{border-color:#667eea;transform:translateY(-2px);box-shadow:0 8px 16px rgba(102,126,234,0.2)}.payment-btn.recommended{border-color:#48bb78;background:#f0fdf4}.recommended-badge{background:#48bb78;color:white;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;display:inline-block;margin-bottom:8px}.btn-title{font-size:18px;font-weight:700;color:#1a202c;margin:8px 0}.btn-desc{color:#718096;font-size:14px;margin:5px 0}.btn-fee{color:#48bb78;font-weight:600;font-size:13px}.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center}.modal.active{display:flex}.modal-content{background:white;border-radius:16px;padding:30px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}.modal-close{float:right;font-size:28px;cursor:pointer;color:#718096}.upi-box{background:#f7fafc;padding:20px;border-radius:12px;text-align:center;margin:20px 0}.upi-id{font-size:20px;font-weight:700;color:#667eea;padding:1
-'''
-
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    font-family: -apple-system, sans-serif;
+                }
+                body {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    padding: 20px;
+                }
+                .container {
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .header {
+                    text-align: center;
+                    color: white;
+                    margin-bottom: 30px;
+                }
+                .header h1 {
+                    font-size: 32px;
+                    margin-bottom: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Measulor Premium</h1>
+                    <p>Lifetime Access - ₹499</p>
+                </div>
+            </div>
+        </body>
+    </html>
+    '''
 # Flask Routes
 @payment_bp.route('/payment')
 def payment_page():
