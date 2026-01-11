@@ -10,11 +10,6 @@ import requests
 
 payment_bp = Blueprint('payment', __name__)
 
-# Instamojo Configuration (No PAN needed initially!)
-# Sign up: https://www.instamojo.com/
-INSTAMOJO_API_KEY = os.getenv('INSTAMOJO_API_KEY', 'test_YOUR_API_KEY')
-INSTAMOJO_AUTH_TOKEN = os.getenv('INSTAMOJO_AUTH_TOKEN', 'test_YOUR_AUTH_TOKEN')
-INSTAMOJO_ENDPOINT = 'https://test.instamojo.com/api/1.1/'  # Use 'https://www.instamojo.com/api/1.1/' for live
 
 # Your UPI ID for manual payments (FREE - 0% fees)
 YOUR_UPI_ID = os.getenv('UPI_ID', 'yourname@okaxis')  # Replace with your UPI ID
@@ -79,63 +74,7 @@ PAYMENT_PAGE_HTML = '''<!DOCTYPE html>
 def payment_page():
     return render_template_string(PAYMENT_PAGE_HTML, upi_id=YOUR_UPI_ID)
 
-@payment_bp.route('/api/payment/instamojo', methods=['POST'])
-def instamojo_payment():
-    """Create Instamojo payment link - Auto payment (GPay/UPI/Cards)"""
-    try:
-        headers = {
-            'X-Api-Key': INSTAMOJO_API_KEY,
-            'X-Auth-Token': INSTAMOJO_AUTH_TOKEN
-        }
-        
-        payload = {
-            'purpose': PRODUCT_NAME,
-            'amount': PRODUCT_PRICE,
-            'buyer_name': '',
-            'email': '',
-            'redirect_url': request.host_url + 'payment/success',
-            'webhook': request.host_url + 'api/payment/instamojo-webhook',
-            'send_email': False,
-            'send_sms': False,
-            'allow_repeated_payments': True
-        }
-        
-        response = requests.post(
-            INSTAMOJO_ENDPOINT + 'payment-requests/',
-            data=payload,
-            headers=headers
-        )
-        
-        data = response.json()
-        
-        if data.get('success'):
-            payment_request = data['payment_request']
-            
-            # Store order
-            order_id = payment_request['id']
-            orders_db[order_id] = {
-                'order_id': order_id,
-                'amount': PRODUCT_PRICE,
-                'type': 'instamojo',
-                'status': 'created',
-                'created_at': datetime.now().isoformat()
-            }
-            
-            return jsonify({
-                'success': True,
-                'payment_url': payment_request['longurl']
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': data.get('message', 'Instamojo error')
-            }), 400
-    
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
+
 
 @payment_bp.route('/api/payment/manual', methods=['POST'])
 def manual_upi_payment():
@@ -230,7 +169,102 @@ def payment_success():
     
     return render_template_string('''
         <!DOCTYPE html>
-        <html><head><meta charset="UTF-8"><title>Payment Successful</title><style>*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,sans-serif}body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.card{background:white;border-radius:16px;padding:48px;text-align:center;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}.success-icon{font-size:64px;margin-bottom:24px}.title{font-size:28px;font-weight:700;color:#1a202c;margin-bottom:12px}.message{color:#4a5568;font-size:16px;margin-bottom:32px}.license-box{background:#f7fafc;border:2px dashed #cbd5e0;border-radius:12px;padding:24px;margin-bottom:32px}.license-label{color:#718096;font-size:14px;font-weight:600;margin-bottom:8px}.license-key{font-size:24px;font-weight:700;color:#667eea;font-family:monospace;word-break:break-all}.btn{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 32px;border:none;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;display:inline-block;margin:8px}.btn:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(102,126,234,0.4)}</style></head><body><div class="card"><div class="success-icon">✅</div><h1 class="title">Payment Successful!</h1><p class="message">Your license key has been generated successfully.</p><div class="license-box"><div class="license-label">YOUR LICENSE KEY</div><div class="license-key">{{ license_key }}</div></div><p style="color:#718096;font-size:14px;margin-bottom:24px">Check your email for the license key and activation instructions.</p><a href="/" class="btn">🏠 Go to Home</a></div></body></html>
+<html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Payment Successful</title>
+                <style>
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                        font-family: -apple-system, sans-serif;
+                    }
+                    body {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        min-height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                    }
+                    .card {
+                        background: white;
+                        border-radius: 16px;
+                        padding: 48px;
+                        text-align: center;
+                        max-width: 500px;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    }
+                    .success-icon {
+                        font-size: 64px;
+                        margin-bottom: 24px;
+                    }
+                    .title {
+                        font-size: 28px;
+                        font-weight: 700;
+                        color: #1a202c;
+                        margin-bottom: 12px;
+                    }
+                    .message {
+                        color: #4a5568;
+                        font-size: 16px;
+                        margin-bottom: 32px;
+                    }
+                    .license-box {
+                        background: #f7fafc;
+                        border: 2px dashed #cbd5e0;
+                        border-radius: 12px;
+                        padding: 24px;
+                        margin-bottom: 32px;
+                    }
+                    .license-label {
+                        color: #718096;
+                        font-size: 14px;
+                        font-weight: 600;
+                        margin-bottom: 8px;
+                    }
+                    .license-key {
+                        font-size: 24px;
+                        font-weight: 700;
+                        color: #667eea;
+                        font-family: monospace;
+                        word-break: break-all;
+                    }
+                    .btn {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 14px 32px;
+                        border: none;
+                        border-radius: 12px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        text-decoration: none;
+                        display: inline-block;
+                        margin: 8px;
+                    }
+                    .btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 16px rgba(102,126,234,0.4);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="success-icon">✅</div>
+                    <h1 class="title">Payment Successful!</h1>
+                    <p class="message">Your license key has been generated successfully.</p>
+                    <div class="license-box">
+                        <div class="license-label">YOUR LICENSE KEY</div>
+                        <div class="license-key">{{ license_key }}</div>
+                    </div>
+                    <p style="color:#718096;font-size:14px;margin-bottom:24px">
+                        Check your email for the license key and activation instructions.
+                    </p>
+                    <a href="/" class="btn">🏠 Go to Home</a>
+                </div>
+            </body>
+        </html>
     ''', license_key=license_key)
 
 @payment_bp.route('/api/payment/verify-manual/<order_id>', methods=['POST'])
