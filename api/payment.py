@@ -58,7 +58,16 @@ PAYMENT_PAGE_HTML = '''<!DOCTYPE html>
                     font-size: 32px;
                     margin-bottom: 10px;
                 }
-            </style>
+                                .payment-card {
+                    background: white;
+                    border-radius: 16px;
+                    padding: 30px;
+                    margin: 20px auto;
+                    max-width: 500px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                }
+            61
+            
         </head>
         <body>
             <div class="container">
@@ -66,6 +75,80 @@ PAYMENT_PAGE_HTML = '''<!DOCTYPE html>
                     <h1>Measulor Premium</h1>
                     <p>Lifetime Access - ₹499</p>
                 </div>
+                
+                <!-- Manual UPI Payment Form -->
+                <div class="payment-card">
+                    <h2 style="text-align:center;margin-bottom:20px">📱 Pay with UPI</h2>
+                    <div style="background:#f7f7f7;padding:15px;border-radius:8px;margin-bottom:20px">
+                        <p style="margin:5px 0"><strong>UPI ID:</strong> {{ upi_id }}</p>
+                        <p style="margin:5px 0;font-size:14px;color:#666">Scan QR or use UPI ID to pay ₹499</p>
+                    </div>
+                    
+                    <form id="paymentForm" style="margin-top:20px">
+                        <div style="margin-bottom:15px">
+                            <label style="display:block;margin-bottom:5px;font-weight:600">Your Name</label>
+                            <input type="text" id="name" required style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px">
+                        </div>
+                        
+                        <div style="margin-bottom:15px">
+                            <label style="display:block;margin-bottom:5px;font-weight:600">Your Email</label>
+                            <input type="email" id="email" required style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px">
+                        </div>
+                        
+                        <div style="margin-bottom:15px">
+                            <label style="display:block;margin-bottom:5px;font-weight:600">UPI Transaction ID</label>
+                            <input type="text" id="transaction_id" required placeholder="e.g., 123456789012" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px">
+                        </div>
+                        
+                        <button type="submit" style="width:100%;padding:15px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:18px;font-weight:600;cursor:pointer">Submit Payment Proof</button>
+                    </form>
+                    
+                    <div id="message" style="margin-top:20px;padding:15px;border-radius:8px;display:none"></div>
+                </div>
+                
+                <script>
+                document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const submitBtn = e.target.querySelector('button');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Submitting...';
+                    
+                    const data = {
+                        name: document.getElementById('name').value,
+                        email: document.getElementById('email').value,
+                        transaction_id: document.getElementById('transaction_id').value
+                    };
+                    
+                    try {
+                        const response = await fetch('/api/payment/manual', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        });
+                        
+                        const result = await response.json();
+                        const msgDiv = document.getElementById('message');
+                        msgDiv.style.display = 'block';
+                        
+                        if (result.success) {
+                            msgDiv.style.background = '#d4edda';
+                            msgDiv.style.color = '#155724';
+                            msgDiv.innerHTML = '✅ ' + result.message;
+                            e.target.reset();
+                        } else {
+                            msgDiv.style.background = '#f8d7da';
+                            msgDiv.style.color = '#721c24';
+                            msgDiv.innerHTML = '❌ ' + result.message;
+                        }
+                    } catch (error) {
+                        document.getElementById('message').innerHTML = '❌ Error: ' + error.message;
+                        document.getElementById('message').style.display = 'block';
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit Payment Proof';
+                    }
+                });
+                </script>
             </div>
         </body>
     </html>
@@ -73,7 +156,8 @@ PAYMENT_PAGE_HTML = '''<!DOCTYPE html>
 # Flask Routes
 @payment_bp.route('/payment')
 def payment_page():
-    return render_template_string(PAYMENT_PAGE_HTML, upi_id=YOUR_UPI_ID)
+    return render_template_string(60
+                                  , upi_id=YOUR_UPI_ID)
 
 
 
