@@ -169,8 +169,8 @@ def index():
             .then(data => {
                 if (data.valid) {
                     alert('License activated successfully!');
-                    document.getElementById('startCamera').disabled = false;
-                    document.getElementById('measureNow').disabled = false;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('captureBtn').disabled = false;
                 } else {
                     alert('Invalid license key');
                 }
