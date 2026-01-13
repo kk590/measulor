@@ -153,6 +153,30 @@ def index():
                 }
             });
         }
+
+                function verifyLicense() {
+            const licenseKey = document.getElementById('licenseKey').value;
+            if (!licenseKey) {
+                alert('Please enter a license key');
+                return;
+            }
+            fetch('/api/check-license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ license_key: licenseKey })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.valid) {
+                    alert('License activated successfully!');
+                    document.getElementById('startCamera').disabled = false;
+                    document.getElementById('measureNow').disabled = false;
+                } else {
+                    alert('Invalid license key');
+                }
+            })
+            .catch(() => alert('Error verifying license'));
+        }
     </script>
 </body>
 </html>'''
