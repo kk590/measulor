@@ -185,7 +185,8 @@ def get_license():
         'license_key': license_key,
         'message': 'License key generated'
     })
-Complete rewrite: Clean index.py with license key system@app.route('/api/verify-license', methods=['POST'])
+#Complete rewrite: Clean index.py with license key 
+system@app.route('/api/verify-license', methods=['POST'])
 def check_license():
     data = request.json
     license_key = data.get('license_key', '')
