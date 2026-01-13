@@ -5,7 +5,7 @@ import os
 import secrets
 import json
 from datetime import datetime
-import requests📱 Manual UPI    📱 Pay with GPay
+import requests
 
 payment_bp = Blueprint('payment', __name__)
 
