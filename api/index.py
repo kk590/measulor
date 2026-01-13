@@ -28,10 +28,10 @@ licenses = {}
 
 def generate_license_key():
     """Generate cryptographically secure license key"""
-    raw_key = secrets.token_hex(16).upper()
-    timestamp = datetime.now().isoformat()
-    signature = hmac.new(LICENSE_SECRET.encode(), f"{raw_key}:{timestamp}".encode(), hashlib.sha256).hexdigest()[:16]
-    return f"{raw_key}-{signature}"
+raw_key = secrets.token_hex(16).upper()
+timestamp = datetime.now().isoformat()
+signature = hmac.new(LICENSE_SECRET.encode(), f"{raw_key}:{timestamp}".encode(), hashlib.sha256).hexdigest()[:16]
+return f"{raw_key}-{signature}"
 
 def verify_license(license_key):
     """Verify license key authenticity"""
