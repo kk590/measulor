@@ -263,8 +263,7 @@ def process_image():
         if not verify_license(license_key):
             return jsonify({
                 'success': False, 
-                'message': 'Invalid or expired license key. Please purchase a valid license.',
-                'require_license': True
+        license_key = data.get('license_key', '')                'require_license': True
             })
             'success': True,
             'message': 'Demo measurements generated',
