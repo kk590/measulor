@@ -1,21 +1,17 @@
-#Pay with GPay350
-#20
 # Hybrid Payment System for Measulor
-# Instamojo (Auto) + Manual GPay UPI - No PAN Required!
+# Instamojo (Auto) + Manual UPI (Backup) - No PAN Required!    # Manual GPay UPI Payment - No PAN Required!
 from flask import Blueprint, render_template_string, request, jsonify, redirect
 import os
 import secrets
 import json
 from datetime import datetime
-import requests
+import requests📱 Manual UPI    📱 Pay with GPay
 
 payment_bp = Blueprint('payment', __name__)
 
 
-# Your GPay UPI ID for manual payments (FREE - 0% fees)
-YOUR_UPI_ID = GPAY_UPI_ID = os.getenv('GPAY_UPI_ID', 'yourname@oksbi')  # Replace with your GPay UPI
-223
-
+# Your GPay UPI ID for manual payments (FREE - 0% fees)'UPI_ID', 'yourname@okaxis'    'GPAY_UPI_ID', 'yourname@oksbi'
+YOUR_UPI_ID = os.getenv('UPI_ID', 'yourname@okaxis')  # Replace with your UPI ID
 
 # Product Details
 PRODUCT_PRICE = 499
