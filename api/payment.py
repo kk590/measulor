@@ -1,5 +1,5 @@
-Pay with GPay350
-20
+#Pay with GPay350
+#20
 # Hybrid Payment System for Measulor
 # Instamojo (Auto) + Manual GPay UPI - No PAN Required!
 from flask import Blueprint, render_template_string, request, jsonify, redirect
