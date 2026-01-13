@@ -1,4 +1,4 @@
-# Hybrid Payment System for Measulor
+                61                    </style># Hybrid Payment System for Measulor
 # Manual UPI Payment Only - No PAN Required!💳 Automatic Payment     
 from flask import Blueprint, render_template_string, request, jsonify,redirect
 onclick="showAutomaticPayment()"    
