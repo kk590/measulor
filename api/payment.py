@@ -1,4 +1,4 @@
-📱 Pay with GPay350
+Pay with GPay350
 20
 # Hybrid Payment System for Measulor
 # Instamojo (Auto) + Manual GPay UPI - No PAN Required!
