@@ -1,13 +1,6 @@
-                                </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Measulor Premium</h1>
-# Manual UPI Payment Only - No PAN Required!💳 Automatic Payment     
-from flask import Blueprint, render_template_string, request, jsonify,redirect
-onclick="showAutomaticPayment()"    
-style="display:none"
+# Manual UPI Payment Only - No PAN Required! 🇮🇳 Automatic Payment
+from flask import Blueprint, render_template_string, request, jsonify, redirect
+
 import os
 import secrets
 import json
@@ -16,370 +9,292 @@ import requests
 
 payment_bp = Blueprint('payment', __name__)
 
-
-# Your GPay UPI ID for manual payments (FREE - 0% fees)'UPI_ID', 'yourname@okaxis'    'GPAY_UPI_ID', 'yourname@oksbi'
+# Your GPay UPI ID for manual payments (FREE - 0% fees)'UPI_ID', 'yourname@okaxis')
 YOUR_UPI_ID = os.getenv('UPI_ID', 'yourname@okaxis')  # Replace with your UPI ID
+GPAY_UPI_ID = os.getenv('GPAY_UPI_ID', 'yourname@okbi')
+PRODUCT_PRICE = "299"  # ₹299 INR
+PRODUCT_NAME = "Measulor Premium"
 
-# Product Details
-PRODUCT_PRICE = 499
-PRODUCT_NAME = "Measulor Premium - Lifetime Access"
-
-# Storage
+# Database for storing orders and licenses
 orders_db = {}
 licenses_db = {}
 
 def generate_license_key():
-    return f"MSL-{secrets.token_hex(8).upper()}"
+    return secrets.token_hex(16).upper()
 
-# Payment Page with DUAL OPTIONS
-PAYMENT_PAGE_HTML = '''<!DOCTYPE html>
-<html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>Measulor Premium Payment</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-family: -apple-system, sans-serif;
-                }
-                body {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    min-height: 100vh;
-                    padding: 20px;
-                }
-                .container {
-                    max-width: 600px;
-                    margin: 0 auto;
-                }
-                .header {
-                    text-align: center;
-                    color: white;
-                    margin-bottom: 30px;
-                }
-                .header h1 {
-                    font-size: 32px;
-                    margin-bottom: 10px;
-                }
-                                .payment-card {
-                    background: white;
-                    border-radius: 16px;
-                    padding: 30px;
-                    margin: 20px auto;
-                    max-width: 500px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                }
-            61
+# Payment Page HTML with GPay Integration
+PAYMENT_PAGE_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Measulor Premium - Payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #764ba2;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .price-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 32px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .features {
+            list-style: none;
+            margin: 20px 0;
+        }
+        .features li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+        .features li:before {
+            content: "✓";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .payment-section {
+            margin-top: 30px;
+        }
+        .upi-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+        .upi-button:hover {
+            transform: scale(1.05);
+        }
+        .upi-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+        .upi-id {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #764ba2;
+            text-align: center;
+            margin: 10px 0;
+            border: 2px dashed #667eea;
+        }
+        .instructions {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .submit-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .submit-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Measulor Premium</h1>
+            <p>AI Body Measurement System</p>
+            <div class="price-tag">₹299</div>
+        </div>
+        
+        <ul class="features">
+            <li>Unlimited AI body measurements</li>
+            <li>Advanced accuracy algorithms</li>
+            <li>Save measurement history</li>
+            <li>Export detailed reports</li>
+            <li>Priority customer support</li>
+        </ul>
+        
+        <div class="payment-section">
+            <button class="upi-button" onclick="showAutomaticPayment()">Pay with GPay/UPI</button>
             
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Measulor Premium</h1>
-                    <p>Lifetime Access - ₹499</p>
+            <div id="upi-info" class="upi-info">
+                <h3 style="color: #764ba2; margin-bottom: 15px;">Pay using GPay/UPI</h3>
+                <div class="upi-id">{{ upi_id }}</div>
+                
+                <div class="instructions">
+                    <p><strong>Instructions:</strong></p>
+                    <ol>
+                        <li>Open Google Pay or any UPI app</li>
+                        <li>Send ₹299 to the UPI ID above</li>
+                        <li>Enter your transaction ID below</li>
+                    </ol>
                 </div>
                 
-                <!-- Manual UPI Payment Form -->
-                <div class="payment-card">
-                    <h2 style="text-align:center;margin-bottom:20px">📱 Pay with UPI</h2>
-                    <div style="background:#f7f7f7;padding:15px;border-radius:8px;margin-bottom:20px">
-                        <p style="margin:5px 0"><strong>UPI ID:</strong> {{ upi_id }}</p>
-                        <p style="margin:5px 0;font-size:14px;color:#666">Scan QR or use UPI ID to pay ₹499</p>
+                <form id="payment-form" onsubmit="submitPayment(event)">
+                    <div class="form-group">
+                        <label>Your Email:</label>
+                        <input type="email" id="email" required placeholder="your@email.com">
                     </div>
-                    
-                    <form id="paymentForm" style="margin-top:20px">
-                        <div style="margin-bottom:15px">
-                            <label style="display:block;margin-bottom:5px;font-weight:600">Your Name</label>
-                            <input type="text" id="name" required style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px">
-                        </div>
-                        
-                        <div style="margin-bottom:15px">
-                            <label style="display:block;margin-bottom:5px;font-weight:600">Your Email</label>
-                            <input type="email" id="email" required style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px">
-                        </div>
-                        
-                        <div style="margin-bottom:15px">
-                            <label style="display:block;margin-bottom:5px;font-weight:600">UPI Transaction ID</label>
-                            <input type="text" id="transaction_id" required placeholder="e.g., 123456789012" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px">
-                        </div>
-                        
-                        <button type="submit" style="width:100%;padding:15px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-size:18px;font-weight:600;cursor:pointer">Submit Payment Proof</button>
-                    </form>
-                    
-                    <div id="message" style="margin-top:20px;padding:15px;border-radius:8px;display:none"></div>
-                </div>
-                
-                <script>
-                document.getElementById('paymentForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const submitBtn = e.target.querySelector('button');
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = 'Submitting...';
-                    
-                    const data = {
-                        name: document.getElementById('name').value,
-                        email: document.getElementById('email').value,
-                        transaction_id: document.getElementById('transaction_id').value
-                    };
-                    
-                    try {
-                        const response = await fetch('/api/payment/manual', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(data)
-                        });
-                        
-                        const result = await response.json();
-                        const msgDiv = document.getElementById('message');
-                        msgDiv.style.display = 'block';
-                        
-                        if (result.success) {
-                            msgDiv.style.background = '#d4edda';
-                            msgDiv.style.color = '#155724';
-                            msgDiv.innerHTML = '✅ ' + result.message;
-                            e.target.reset();
-                        } else {
-                            msgDiv.style.background = '#f8d7da';
-                            msgDiv.style.color = '#721c24';
-                            msgDiv.innerHTML = '❌ ' + result.message;
-                        }
-                    } catch (error) {
-                        document.getElementById('message').innerHTML = '❌ Error: ' + error.message;
-                        document.getElementById('message').style.display = 'block';
-                    } finally {
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Submit Payment Proof';
-                    }
-                });
-                </script>
+                    <div class="form-group">
+                        <label>UPI Transaction ID:</label>
+                        <input type="text" id="txn_id" required placeholder="e.g., 123456789012">
+                    </div>
+                    <button type="submit" class="submit-btn">Verify Payment & Get License</button>
+                </form>
             </div>
-        </body>
-    </html>
-    '''
-# Flask Routes
-@payment_bp.route('/payment')
+        </div>
+    </div>
+    
+    <script>
+        function showAutomaticPayment() {
+            document.getElementById('upi-info').style.display = 'block';
+        }
+        
+        function submitPayment(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const txn_id = document.getElementById('txn_id').value;
+            
+            fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    transaction_id: txn_id,
+                    amount: '299'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Payment verified! Your license key: ' + data.license_key);
+                    window.location.href = '/success?key=' + data.license_key;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error processing payment. Please try again.');
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+
+@payment_bp.route('/')
 def payment_page():
-    return render_template_string(60
-                                  , upi_id=YOUR_UPI_ID)
+    return render_template_string(PAYMENT_PAGE_HTML, upi_id=YOUR_UPI_ID)
 
+@payment_bp.route('/verify', methods=['POST'])
+def verify_payment():
+    data = request.get_json()
+    email = data.get('email')
+    transaction_id = data.get('transaction_id')
+    amount = data.get('amount')
+    
+    # Generate order ID
+    order_id = f"ORD_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}"
+    
+    # Generate license key
+    license_key = generate_license_key()
+    
+    # Store order
+    orders_db[order_id] = {
+        'email': email,
+        'transaction_id': transaction_id,
+        'amount': amount,
+        'license_key': license_key,
+        'timestamp': datetime.now().isoformat(),
+        'status': 'pending_verification'
+    }
+    
+    # Store license
+    licenses_db[license_key] = {
+        'email': email,
+        'order_id': order_id,
+        'activated': False,
+        'created_at': datetime.now().isoformat()
+    }
+    
+    return jsonify({
+        'success': True,
+        'license_key': license_key,
+        'order_id': order_id,
+        'message': 'Payment submitted for verification. Your license key has been generated!'
+    })
 
-
-@payment_bp.route('/api/payment/manual', methods=['POST'])
-def manual_upi_payment():
-    """Handle manual UPI payment submission - FREE (0% fees)"""
-    try:
-        data = request.json
-        email = data.get('email')
-        name = data.get('name')
-        transaction_id = data.get('transaction_id')
-        
-        if not email or not name or not transaction_id:
-            return jsonify({
-                'success': False,
-                'message': 'All fields required'
-            }), 400
-        
-        # Generate order ID
-        order_id = 'MANUAL-' + secrets.token_hex(8).upper()
-        
-        # Store order for manual verification
-        orders_db[order_id] = {
-            'order_id': order_id,
-            'email': email,
-            'name': name,
-            'transaction_id': transaction_id,
-            'amount': PRODUCT_PRICE,
-            'type': 'manual_upi',
-            'status': 'pending_verification',
-            'created_at': datetime.now().isoformat()
-        }
-        
-        # Save to file
-        try:
-            with open('manual_orders.json', 'w') as f:
-                json.dump(orders_db, f, indent=2)
-        except:
-            pass
-        
+@payment_bp.route('/check-license/<license_key>')
+def check_license(license_key):
+    if license_key in licenses_db:
         return jsonify({
-            'success': True,
-            'order_id': order_id,
-            'message': 'Payment proof submitted. We will verify and email your license key within 2-4 hours.'
+            'valid': True,
+            'license': licenses_db[license_key]
         })
-    
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
-
-@payment_bp.route('/api/payment/instamojo-webhook', methods=['POST'])
-def instamojo_webhook():
-    """Handle Instamojo payment success webhook"""
-    try:
-        data = request.form
-        payment_id = data.get('payment_id')
-        payment_request_id = data.get('payment_request_id')
-        status = data.get('status')
-        
-        if status == 'Credit' and payment_request_id in orders_db:
-            # Payment successful - Generate license
-            license_key = generate_license_key()
-            
-            orders_db[payment_request_id]['status'] = 'paid'
-            orders_db[payment_request_id]['payment_id'] = payment_id
-            orders_db[payment_request_id]['license_key'] = license_key
-            
-            licenses_db[license_key] = {
-                'order_id': payment_request_id,
-                'status': 'active',
-                'created_at': datetime.now().isoformat()
-            }
-            
-            # TODO: Send email with license key
-        
-        return jsonify({'status': 'ok'})
-    
-    except Exception as e:
-        print(f'Webhook error: {e}')
-        return jsonify({'error': str(e)}), 400
-
-@payment_bp.route('/payment/success')
-def payment_success():
-    """Payment success page"""
-    payment_id = request.args.get('payment_id')
-    payment_request_id = request.args.get('payment_request_id')
-    
-    license_key = 'Processing...'
-    if payment_request_id and payment_request_id in orders_db:
-        order = orders_db[payment_request_id]
-        license_key = order.get('license_key', 'Processing...')
-    
-    return render_template_string('''
-        <!DOCTYPE html>
-<html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Payment Successful</title>
-                <style>
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                        font-family: -apple-system, sans-serif;
-                    }
-                    body {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 20px;
-                    }
-                    .card {
-                        background: white;
-                        border-radius: 16px;
-                        padding: 48px;
-                        text-align: center;
-                        max-width: 500px;
-                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                    }
-                    .success-icon {
-                        font-size: 64px;
-                        margin-bottom: 24px;
-                    }
-                    .title {
-                        font-size: 28px;
-                        font-weight: 700;
-                        color: #1a202c;
-                        margin-bottom: 12px;
-                    }
-                    .message {
-                        color: #4a5568;
-                        font-size: 16px;
-                        margin-bottom: 32px;
-                    }
-                    .license-box {
-                        background: #f7fafc;
-                        border: 2px dashed #cbd5e0;
-                        border-radius: 12px;
-                        padding: 24px;
-                        margin-bottom: 32px;
-                    }
-                    .license-label {
-                        color: #718096;
-                        font-size: 14px;
-                        font-weight: 600;
-                        margin-bottom: 8px;
-                    }
-                    .license-key {
-                        font-size: 24px;
-                        font-weight: 700;
-                        color: #667eea;
-                        font-family: monospace;
-                        word-break: break-all;
-                    }
-                    .btn {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 14px 32px;
-                        border: none;
-                        border-radius: 12px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        text-decoration: none;
-                        display: inline-block;
-                        margin: 8px;
-                    }
-                    .btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 8px 16px rgba(102,126,234,0.4);
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <div class="success-icon">✅</div>
-                    <h1 class="title">Payment Successful!</h1>
-                    <p class="message">Your license key has been generated successfully.</p>
-                    <div class="license-box">
-                        <div class="license-label">YOUR LICENSE KEY</div>
-                        <div class="license-key">{{ license_key }}</div>
-                    </div>
-                    <p style="color:#718096;font-size:14px;margin-bottom:24px">
-                        Check your email for the license key and activation instructions.
-                    </p>
-                    <a href="/" class="btn">🏠 Go to Home</a>
-                </div>
-            </body>
-        </html>
-    ''', license_key=license_key)
-
-@payment_bp.route('/api/payment/verify-manual/<order_id>', methods=['POST'])
-def verify_manual_payment(order_id):
-    """Admin endpoint to verify manual UPI payments"""
-    # TODO: Add admin authentication
-    if order_id in orders_db:
-        license_key = generate_license_key()
-        orders_db[order_id]['status'] = 'verified'
-        orders_db[order_id]['license_key'] = license_key
-        
-        licenses_db[license_key] = {
-            'order_id': order_id,
-            'status': 'active',
-            'created_at': datetime.now().isoformat()
-        }
-        
-        return jsonify({
-            'success': True,
-            'license_key': license_key
-        })
-    
-    return jsonify({'success': False, 'message': 'Order not found'}), 404
-
-@payment_bp.route('/api/payment/orders')
-def get_orders():
-    """View all orders (manual + automatic)"""
-    return jsonify({'orders': orders_db})
+    return jsonify({'valid': False}), 404
