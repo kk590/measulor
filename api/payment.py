@@ -6,6 +6,9 @@ import secrets
 import json
 from datetime import datetime
 import requests
+import hashlib
+import hmac
+from cryptography.fernet import Fernet
 
 payment_bp = Blueprint('payment', __name__)
 
@@ -15,11 +18,23 @@ GPAY_UPI_ID = os.getenv('GPAY_UPI_ID', 'yourname@okbi')
 PRODUCT_PRICE = "299"  # ₹299 INR
 PRODUCT_NAME = "Measulor Premium"
 
+# Cryptographic security configuration
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', Fernet.generate_key().decode())  # Generate in production
+SECRET_KEY = os.getenv('SECRET_KEY', secrets.token_hex(32))  # For HMAC signing
+cipher = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+
 # Database for storing orders and licenses
 orders_db = {}
 licenses_db = {}
 
 def generate_license_key():
+        """Generate cryptographically secure license key with encryption"""
+    raw_key = secrets.token_hex(16).upper()
+    # Add timestamp and hash for extra security
+    timestamp = datetime.now().isoformat()
+    data = f"{raw_key}:{timestamp}"
+    encrypted = cipher.encrypt(data.encode()).decode()
+    return encrypted[:32]  # Return first 32 chars of encrypted key
     return secrets.token_hex(16).upper()
 
 # Payment Page HTML with GPay Integration
@@ -256,6 +271,9 @@ def payment_page():
 def verify_payment():
     data = request.get_json()
     email = data.get('email')
+        
+    # Hash transaction ID for security
+    transaction_hash = hashlib.sha256(transaction_id.encode()).hexdigest()[:16]
     transaction_id = data.get('transaction_id')
     amount = data.get('amount')
     
@@ -267,15 +285,38 @@ def verify_payment():
     
     # Store order
     orders_db[order_id] = {
-        'email': email,
-        'transaction_id': transaction_id,
+        'email': encrypted_email,  # ENCRYPTED        'transaction_id': transaction_id,
+                'transaction_hash': transaction_hash,  # Store hashed version
         'amount': amount,
         'license_key': license_key,
+                'license_signature': generate_hmac_signature(license_key),  # HMAC signature
         'timestamp': datetime.now().isoformat(),
         'status': 'pending_verification'
     }
     
     # Store license
+        # Encrypt sensitive email data
+    encrypted_email = encrypt_data(email)
+
+    def encrypt_data(data: str) -> str:
+    """Encrypt sensitive data using Fernet symmetric encryption"""
+    return cipher.encrypt(data.encode()).decode()
+
+def decrypt_data(encrypted_data: str) -> str:
+    """Decrypt encrypted data"""
+    try:
+        return cipher.decrypt(encrypted_data.encode()).decode()
+    except:
+        return None
+
+def generate_hmac_signature(data: str) -> str:
+    """Generate HMAC signature for data integrity verification"""
+    return hmac.new(SECRET_KEY.encode(), data.encode(), hashlib.sha256).hexdigest()
+
+def verify_hmac_signature(data: str, signature: str) -> bool:
+    """Verify HMAC signature"""
+    expected_signature = generate_hmac_signature(data)
+    return hmac.compare_digest(expected_signature, signature)
     licenses_db[license_key] = {
         'email': email,
         'order_id': order_id,
