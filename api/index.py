@@ -1,18 +1,57 @@
 from flask import Flask, jsonify, request
 import base64
 import io
+import os
 import random
 import time
+import hashlib
+import hmac
+import secrets
+from cryptography.fernet import Fernet
+from datetime import datetime
 from PIL import Image
 from .pricing import pricing_bp
 from .pricing import subscription_bp
-from .payment import payment_bp
 app = Flask(__name__)
+
+# License key system with cryptography
+LICENSE_SECRET = os.getenv('LICENSE_SECRET', secrets.token_hex(32))
+cipher_suite = None
+try:
+    ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', Fernet.generate_key().decode())
+    cipher_suite = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+except:
+    pass
+
+# In-memory license storage (use database in production)
+licenses = {}
+
+def generate_license_key():
+    """Generate cryptographically secure license key"""
+    raw_key = secrets.token_hex(16).upper()
+    timestamp = datetime.now().isoformat()
+    signature = hmac.new(LICENSE_SECRET.encode(), f"{raw_key}:{timestamp}".encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{raw_key}-{signature}"
+
+def verify_license(license_key):
+    """Verify license key authenticity"""
+    if not license_key or '-' not in license_key:
+        return False
+    
+    try:
+        raw_key, signature = license_key.rsplit('-', 1)
+        # Check if license exists and is valid
+        if license_key in licenses:
+            license_data = licenses[license_key]
+            if license_data.get('active', False):
+                return True
+    except:
+        pass
+    return False
 
 # Register blueprints
 app.register_blueprint(pricing_bp)
 app.register_blueprint(subscription_bp)
-app.register_blueprint(payment_bp, url_prefix='/payment')
 
 def generate_demo_measurements(image_width, image_height):
     """Generate realistic demo measurements based on image dimensions"""
@@ -218,6 +257,15 @@ def process_image():
         width, height = image.size
         measurements = generate_demo_measurements(width, height)
         return jsonify({
+                    
+        # License key validation
+        license_key = data.get('license_key', '')
+        if not verify_license(license_key):
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid or expired license key. Please purchase a valid license.',
+                'require_license': True
+            })
             'success': True,
             'message': 'Demo measurements generated',
             'measurements': measurements,
@@ -228,6 +276,42 @@ def process_image():
 
 @app.route('/api/health')
 def health():
+
+    @app.route('/api/get-license')
+def get_license():
+    """Generate new license key (for testing/admin)"""
+    license_key = generate_license_key()
+    licenses[license_key] = {
+        'created_at': datetime.now().isoformat(),
+        'active': True,
+        'product': 'Measulor Premium'
+    }
+    return jsonify({
+        'success': True,
+        'license_key': license_key,
+        'message': 'License key generated successfully'
+    })
+
+@app.route('/api/verify-license', methods=['POST'])
+def check_license():
+    """Verify license key validity"""
+    data = request.json
+    license_key = data.get('license_key', '')
+    is_valid = verify_license(license_key)
+    
+    if is_valid:
+        return jsonify({
+            'success': True,
+            'valid': True,
+            'message': 'License key is valid',
+            'license_data': licenses.get(license_key, {})
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'valid': False,
+            'message': 'Invalid or expired license key'
+        })
     return jsonify({'status': 'ok', 'message': 'Measulor Demo API running!', 'mode': 'demo'})
 
 if __name__ == '__main__':
