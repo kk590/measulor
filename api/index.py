@@ -115,6 +115,7 @@ def index():
         <div class="controls">
             <button class="btn-primary" id="startBtn" onclick="startCamera()">Start Camera</button>
             <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto()">Measure Now</button>
+                  <button class="btn-secondary" id="switchBtn" onclick="switchCamera()" style="display:none;">🔄 Switch Camera</button>
         </div>
     </div>
     <div class="status" id="status">Tap Start Camera to begin</div>
@@ -125,7 +126,9 @@ def index():
         async function startCamera() {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             video.srcObject = stream;
+                    currentStream = stream;
             document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('switchBtn').style.display = 'block';
             document.getElementById('captureBtn').classList.remove('hidden');
         }
         function capturePhoto() {
@@ -176,6 +179,21 @@ def index():
                 }
             })
             .catch(() => alert('Error verifying license'));
+        }
+
+                let currentStream = null;
+        let currentFacingMode = 'user';
+        
+        async function switchCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: currentFacingMode } 
+            });
+            video.srcObject = stream;
+            currentStream = stream;
         }
     </script>
 </body>
