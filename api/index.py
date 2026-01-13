@@ -263,10 +263,7 @@ def process_image():
         if not verify_license(license_key):
             return jsonify({
                 'success': False, 
-        license_key = data.get('license_key', '')                'require_license': True
-            })
-            'success': True,
-            'message': 'Demo measurements generated',
+                'success': True,            'message': 'Demo measurements generated',
             'measurements': measurements,
             'note': 'Demo version - Real AI processing available on production server'
         })
