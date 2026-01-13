@@ -106,6 +106,12 @@ def index():
     <div class="camera-box">
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600;">🔐 Enter License Key for Full Access</label>
+                <input type="text" id="licenseKey" placeholder="XXXXXXXX-XXXXXXXX" style="width: 100%; padding: 12px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(255,255,255,0.2); color: white; font-size: 1em; margin-bottom: 10px;">
+                <button onclick="verifyLicense()" style="width: 100%; padding: 12px; background: #4299e1; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Activate License</button>
+                <div id="licenseStatus" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
+            </div>
         <div class="controls">
             <button class="btn-primary" id="startBtn" onclick="startCamera()">Start Camera</button>
             <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto()">Measure Now</button>
