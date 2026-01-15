@@ -208,11 +208,11 @@ def process_image():
         if not image_data:
             return jsonify({'success': False, 'message': 'No image provided'})
         if 'base64,' in image_data:
-        license_key = data.get('license_key', '')
                         image_data = image_data.split('base64,')[1]
         image_bytes = base64.b64decode(image_data)
         image = Image.open(io.BytesIO(image_bytes))
         width, height = image.size
+                license_key = data.get('license_key', '')
         
         # Check license and generate appropriate measurements
         is_licensed = verify_license(license_key)
