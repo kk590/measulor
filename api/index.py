@@ -212,7 +212,7 @@ def process_image():
         image_bytes = base64.b64decode(image_data)
         image = Image.open(io.BytesIO(image_bytes))
         width, height = image.size
-            license_key = data.get('license_key', '')        
+        license_key = data.get('license_key', '')        
         # Check license and generate appropriate measurements
         is_licensed = verify_license(license_key)
         if is_licensed:            # Real measurements using image analysis
@@ -235,9 +235,8 @@ def process_image():
             message = 'Real measurements calculated'
         else:
             measurements = generate_demo_measurements(width, height)
-            message = 'Demo measurements generated'        return jsonify({
-            'success': True,
-            'message': message,        })
+            message = 'Demo measurements generated'       
+        return jsonify({'success': True,'message': message})
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
