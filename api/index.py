@@ -277,5 +277,75 @@ def check_license():
 def health():
     return jsonify({'status': 'ok', 'message': 'Measulor API running', 'mode': 'demo'})
 
+# Lemon Squeezy Integration
+LEMON_SQUEEZY_WEBHOOK_SECRET = os.getenv('LEMON_SQUEEZY_WEBHOOK_SECRET', '')
+
+@app.route('/api/lemon-squeezy-webhook', methods=['POST'])
+def lemon_squeezy_webhook():
+    try:
+        # Get the webhook payload
+        payload = request.get_data()
+        signature = request.headers.get('X-Signature', '')
+        
+        # Verify webhook signature
+        if LEMON_SQUEEZY_WEBHOOK_SECRET:
+            expected_signature = hmac.new(
+                LEMON_SQUEEZY_WEBHOOK_SECRET.encode(),
+                payload,
+                hashlib.sha256
+            ).hexdigest()
+            
+            if signature != expected_signature:
+                return jsonify({'success': False, 'message': 'Invalid signature'}), 401
+        
+        # Parse the webhook data
+        data = request.json
+        event_name = data.get('meta', {}).get('event_name', '')
+        
+        # Handle different webhook events
+        if event_name == 'order_created':
+            # Extract order data
+            order_data = data.get('data', {})
+            customer_email = order_data.get('attributes', {}).get('user_email', '')
+            order_id = order_data.get('id', '')
+            
+            # Generate license key for the customer
+            license_key = generate_license_key()
+            licenses[license_key] = {
+                'created_at': datetime.now().isoformat(),
+                'active': True,
+                'product': 'Measulor Premium',
+                'customer_email': customer_email,
+                'order_id': order_id,
+                'source': 'lemon_squeezy'
+            }
+            
+            # In production, you would:
+            # 1. Store license in database
+            # 2. Send email to customer with license key
+            # 3. Log the transaction
+            
+            return jsonify({
+                'success': True,
+                'message': 'Order processed',
+                'license_key': license_key
+            })
+        
+        return jsonify({'success': True, 'message': 'Webhook received'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+@app.route('/api/create-checkout')
+def create_checkout():
+    # This endpoint returns the Lemon Squeezy checkout URL
+    # You'll need to replace this with your actual Lemon Squeezy store and product IDs
+    checkout_url = 'https://your-store.lemonsqueezy.com/checkout/buy/your-product-id'
+    return jsonify({
+        'success': True,
+        'checkout_url': checkout_url
+    })
+
+
 if __name__ == '__main__':
     app.run()
