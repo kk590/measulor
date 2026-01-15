@@ -212,8 +212,7 @@ def process_image():
         image_bytes = base64.b64decode(image_data)
         image = Image.open(io.BytesIO(image_bytes))
         width, height = image.size
-                license_key = data.get('license_key', '')
-        
+            license_key = data.get('license_key', '')        
         # Check license and generate appropriate measurements
         is_licensed = verify_license(license_key)
         ed:
