@@ -109,13 +109,14 @@ def index():
           <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left;">\n   <h3 style="margin-bottom: 10px; color: #fff;">📋 Instructions:</h3>\n   <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">\n    <li>Click "Start Camera" to begin</li>\n    <li>Position yourself 6-8 feet from camera</li>\n    <li>Stand straight with arms slightly away from body</li>\n    <li>Ensure good lighting</li>\n    <li>Enter valid license key for accurate measurements</li>\n    <li>Click "Measure Now" to capture</li>\n   </ol>\n  </div>
                     <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600;">🔐 Enter License Key for Full Access</label>
+                  <div style="background: rgba(255,100,100,0.2); border: 2px solid rgba(255,100,100,0.5); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: center;"><p style="margin: 0; font-weight: 600; color: #ffe4e4;">⚠️ License Key Required - Enter a valid license key below to unlock full measurement capabilities</p></div>
                 <input type="text" id="licenseKey" placeholder="XXXXXXXX-XXXXXXXX" style="width: 100%; padding: 12px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(255,255,255,0.2); color: white; font-size: 1em; margin-bottom: 10px;">
                 <button onclick="verifyLicense()" style="width: 100%; padding: 12px; background: #4299e1; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Activate License</button>
                 <div id="licenseStatus" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
             </div>
         <div class="controls">
-            <button class="btn-primary" id="startBtn" onclick="startCamera()">Start Camera</button>
-            <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto()">Measure Now</button>
+            <button class="btn-primary" id="startBtn" onclick="startCamera()"> disabled style="opacity: 0.5; cursor: not-allowed;"Start Camera</button>
+            <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto( disabled style="opacity: 0.5; cursor: not-allowed;")">Measure Now</button>
                   <button class="btn-secondary" id="switchBtn" onclick="switchCamera()" style="display:none;">🔄 Switch Camera</button>
         </div>
     </div>
@@ -173,10 +174,8 @@ def index():
                 if (data.valid) {
                     alert('License activated successfully!');
                                         activeLicenseKey = licenseKey;
-                    document.getElementById('startBtn').disabled = false;
-                    document.getElementById('captureBtn').disabled = false;
-                } else {
-                    alert('Invalid license key');
+                    const startBtn = document.getElementById('startBtn'); startBtn.disabled = false; startBtn.style.opacity = '1'; startBtn.style.cursor = 'pointer';                    document.getElementById('captureBtn').disabled = false;
+                    const captureBtn = document.getElementById('captureBtn'); captureBtn.disabled = false; captureBtn.style.opacity = '1'; captureBtn.style.cursor = 'pointer';                    alert('Invalid license key');
                 }
             })
             .catch(() => alert('Error verifying license'));
