@@ -215,8 +215,7 @@ def process_image():
             license_key = data.get('license_key', '')        
         # Check license and generate appropriate measurements
         is_licensed = verify_license(license_key)
-        ed:
-            # Real measurements using image analysis
+        if is_licensed:            # Real measurements using image analysis
             measurements = {
                 'shoulder_width': round(width * 0.28, 1),
                 'hip_width': round(width * 0.25, 1),
