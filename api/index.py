@@ -82,8 +82,7 @@ def verify_license(license_key):
     except Exception as e:
         print(f'License validation error: {str(e)}')
     
-            time.sleep(2)
-        return False
+    return False
     measurements = {
         'shoulder_width': round(random.uniform(38.0, 50.0), 1),
         'hip_width': round(random.uniform(32.0, 42.0), 1),
