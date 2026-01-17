@@ -82,11 +82,12 @@ def verify_license(license_key):
     except Exception as e:
         print(f'License validation error: {str(e)}')
     
-    return False.sleep(2)
+            time.sleep(2)
+        return False
     measurements = {
         'shoulder_width': round(random.uniform(38.0, 50.0), 1),
         'hip_width': round(random.uniform(32.0, 42.0), 1),
-        'torso_length': round(random.uniform(55.0, 70.0), 1),
+                'torso_length': round(random.uniform(55.0, 70.0), 1),
         'arm_length': round(random.uniform(55.0, 65.0), 1),
         'leg_length': round(random.uniform(85.0, 105.0), 1)
     }
@@ -203,14 +204,24 @@ def index():
             })
             .then(r => r.json())
             .then(data => {
-                if (data.valid) {
-                    alert('License activated successfully!');
-                                        activeLicenseKey = licenseKey;
-                    const startBtn = document.getElementById('startBtn'); startBtn.disabled = false; startBtn.style.opacity = '1'; startBtn.style.cursor = 'pointer';                    document.getElementById('captureBtn').disabled = false;
-                    const captureBtn = document.getElementById('captureBtn'); captureBtn.disabled = false; captureBtn.style.opacity = '1'; captureBtn.style.cursor = 'pointer';                    alert('Invalid license key');
-                }
-            })
-            .catch(() => alert('Error verifying license'));
+                if (data.valid) {if (data.valid) {
+                alert('License activated successfully!');
+                activeLicenseKey = licenseKey;
+                document.querySelector('.demo-badge').style.display = 'none';
+                document.querySelector('[style*="background: rgba(255,100,100"]').style.display = 'none';
+                const startBtn = document.getElementById('startBtn');
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+                const captureBtn = document.getElementById('captureBtn');
+                captureBtn.disabled = false;
+                captureBtn.style.opacity = '1';
+                captureBtn.style.cursor = 'pointer';
+            } else {
+                alert('Invalid license key');
+            }
+        })
+        .catch(() => alert('Error verifying license'));
         }
 
                 let currentStream = null;
