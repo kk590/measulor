@@ -12,6 +12,7 @@ from datetime import datetime
 from PIL import Image
 from .pricing import pricing_bp
 from .pricing import subscription_bp
+import requests
 
 app = Flask(__name__)
 
@@ -37,20 +38,51 @@ def generate_license_key():
     signature = hmac.new(LICENSE_SECRET.encode(), f"{raw_key}:{timestamp}".encode(), hashlib.sha256).hexdigest()[:16]
     return f"{raw_key}-{signature}"
 
-def verify_license(license_key):
-    if not license_key or '-' not in license_key:
-        return False
-    try:
-        if license_key in licenses:
-            license_data = licenses[license_key]
-            if license_data.get('active', False):
-                return True
-    except:
-        pass
-    return False
 
-def generate_demo_measurements(image_width, image_height):
-    time.sleep(2)
+# Lemon Squeezy API configuration
+LEMON_SQUEEZY_API_KEY = os.getenv('LEMON_SQUEEZY_API_KEY', '')
+LEMON_SQUEEZY_STORE_ID = os.getenv('LEMON_SQUEEZY_STORE_ID', '')
+
+def verify_license(license_key):
+    """Validate license key with Lemon Squeezy API"""
+    if not license_key:
+        return False
+    
+    # Check if already verified in local cache
+    if license_key in licenses:
+        license_data = licenses[license_key]
+        if license_data.get('active', False):
+            return True
+    
+    # Validate with Lemon Squeezy API
+    try:
+        headers = {
+            'Authorization': f'Bearer {LEMON_SQUEEZY_API_KEY}',
+            'Accept': 'application/json'
+        }
+        
+        # Lemon Squeezy License Key Validation API
+        response = requests.post(
+            'https://api.lemonsqueezy.com/v1/licenses/validate',
+            json={'license_key': license_key},
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('valid', False) and not data.get('disabled', False):
+                # Cache the validated license
+                licenses[license_key] = {
+                    'active': True,
+                    'validated_at': datetime.now().isoformat(),
+                    'license_data': data
+                }
+                return True
+    except Exception as e:
+        print(f'License validation error: {str(e)}')
+    
+    return False.sleep(2)
     measurements = {
         'shoulder_width': round(random.uniform(38.0, 50.0), 1),
         'hip_width': round(random.uniform(32.0, 42.0), 1),
