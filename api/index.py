@@ -8,9 +8,8 @@ import hashlib
 import hmac
 import secrets
 from cryptography.fernet import Fernet
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
-from .pricing import pricing_bp
 from .pricing import subscription_bp
 import requests
 
@@ -288,6 +287,123 @@ def check_license():
 @app.route('/api/health')
 def health():
     return jsonify({'status': 'ok', 'message': 'Measulor API running', 'mode': 'demo'})
+
+            # Key Generation Integration - Bulk License Key Generation
+@app.route('/api/keygen/generate', methods=['POST'])
+def keygen_generate():
+    """Generate bulk license keys with customizable options"""
+    try:
+        data = request.get_json()
+        count = data.get('count', 1)  # Number of keys to generate
+        product = data.get('product', 'Measulor Premium')
+        expiry_days = data.get('expiry_days', 365)  # 1 year by default
+        
+        if count > 100:
+            return jsonify({'error': 'Maximum 100 keys per request'}), 400
+        
+        generated_keys = []
+        for _ in range(count):
+            key = generate_license_key()
+            licenses[key] = {
+                'created_at': datetime.now().isoformat(),
+                'active': True,
+                'product': product,
+                'expiry_days': expiry_days,
+                'activation_date': None,
+                'status': 'generated'
+            }
+            generated_keys.append(key)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Generated {count} license keys',
+            'keys': generated_keys,
+            'product': product,
+            'expiry_days': expiry_days
+        }), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/keygen/activate', methods=['POST'])
+def keygen_activate():
+    """Activate a license key for a user"""
+    try:
+        data = request.get_json()
+        license_key = data.get('license_key')
+        email = data.get('email')
+        
+        if license_key not in licenses:
+            return jsonify({'error': 'Invalid license key'}), 404
+        
+        license_data = licenses[license_key]
+        
+        if license_data.get('status') != 'generated':
+            return jsonify({'error': 'License key already activated'}), 400
+        
+        # Activate the license
+        licenses[license_key].update({
+            'status': 'activated',
+            'activation_date': datetime.now().isoformat(),
+            'email': email
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': 'License key activated',
+            'license_key': license_key,
+            'email': email
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/keygen/validate/<license_key>', methods=['GET'])
+def keygen_validate(license_key):
+    """Validate license key and check expiry status"""
+    try:
+        if license_key not in licenses:
+            return jsonify({'valid': False, 'message': 'Invalid license key'}), 404
+        
+        license_data = licenses[license_key]
+        created_at = datetime.fromisoformat(license_data['created_at'])
+        expiry_days = license_data.get('expiry_days', 365)
+        expiry_date = created_at + datetime.timedelta(days=expiry_days)
+        
+        is_expired = datetime.now() > expiry_date
+        
+        return jsonify({
+            'valid': not is_expired,
+            'license_key': license_key,
+            'status': license_data.get('status'),
+            'product': license_data.get('product'),
+            'created_at': license_data.get('created_at'),
+            'activated_at': license_data.get('activation_date'),
+            'expiry_date': expiry_date.isoformat(),
+            'expired': is_expired
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/keygen/stats', methods=['GET'])
+def keygen_stats():
+    """Get key generation statistics"""
+    try:
+        total_keys = len(licenses)
+        generated = sum(1 for k in licenses.values() if k.get('status') == 'generated')
+        activated = sum(1 for k in licenses.values() if k.get('status') == 'activated')
+        expired = sum(1 for k in licenses.values() if datetime.now() > 
+                      (datetime.fromisoformat(k['created_at']) + datetime.timedelta(days=k.get('expiry_days', 365))))
+        
+        return jsonify({
+            'total_keys': total_keys,
+            'generated_keys': generated,
+            'activated_keys': activated,
+            'expired_keys': expired,
+            'active_keys': total_keys - expired
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
 
 
