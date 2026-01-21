@@ -40,10 +40,7 @@ def generate_license_key():
 
 
 def verify_license(license_key):
-"""Validate license key from local storage"""
 
-        return False
-    
     # Check if already verified in local cache
     if license_key in licenses:
         license_data = licenses[license_key]
