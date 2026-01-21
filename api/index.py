@@ -10,14 +10,11 @@ import secrets
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from PIL import Image
-from .pricing import subscription_bp
+
 import requests
 
 app = Flask(__name__)
 
-# Register blueprints
-app.register_blueprint(pricing_bp)
-app.register_blueprint(subscription_bp)
 
 # License key system with cryptography
 LICENSE_SECRET = os.getenv('LICENSE_SECRET', secrets.token_hex(32))
