@@ -70,140 +70,280 @@ def index():
 <html>
 <head>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4630566819144819" crossorigin="anonymous"></script>
-    <title>Measulor - AI Body Measurement</title>
+    <title>Measulor - License Activation Portal</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: -apple-system, sans-serif; min-height: 100vh; color: white; padding: 15px; }
         .header { text-align: center; padding: 15px 0; }
-        .header h1 { font-size: 1.8em; margin-bottom: 5px; }
-        .price-tag { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; border-radius: 50px; font-size: 32px; font-weight: bold; display: inline-block; margin: 20px 0; }
+        .header h1 { font-size: 2.2em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .portal-container { max-width: 400px; margin: 50px auto; }
+        .portal-box { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; backdrop-filter: blur(10px); }
+        .license-icon { font-size: 60px; text-align: center; margin-bottom: 20px; }
+        .input-group { margin: 20px 0; }
+        input { width: 100%; padding: 15px; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; background: rgba(255,255,255,0.2); color: white; font-size: 1em; }
+        input::placeholder { color: rgba(255,255,255,0.6); }
+        button { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-activate { background: #48bb78; color: white; }
+        .btn-activate:hover { background: #38a169; transform: translateY(-2px); }
+        .status-message { margin-top: 15px; padding: 15px; border-radius: 10px; display: none; }
+        .success { background: rgba(72,187,120,0.2); border: 1px solid #48bb78; }
+        .error { background: rgba(245,101,101,0.2); border: 1px solid #f56565; }
+        .features { margin-top: 30px; }
+        .feature-item { display: flex; align-items: center; margin: 10px 0; opacity: 0.9; }
+        .feature-icon { margin-right: 10px; }
+        
+        /* Measurement App Styles (Hidden Initially) */
+        .measurement-app { display: none; }
         .camera-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; margin: 15px 0; }
         #video { width: 100%; border-radius: 10px; background: #000; }
         #canvas { display: none; }
         .controls { display: flex; gap: 10px; margin-top: 15px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 1em; font-weight: 600; cursor: pointer; }
         .btn-primary { background: #48bb78; color: white; }
         .btn-secondary { background: #4299e1; color: white; }
         .status { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; text-align: center; margin: 15px 0; }
         .results { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 20px; margin: 15px 0; display: none; }
         .measure-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .demo-badge { background: rgba(255,200,0,0.9); color: #333; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+        .instruction-box { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left; }
+        .instruction-box h3 { margin-bottom: 10px; color: #fff; }
+        .instruction-box ol { margin: 0; padding-left: 20px; line-height: 1.8; }
+        .loading-spinner { display: none; text-align: center; padding: 20px; }
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Measulor</h1>
-        <p>AI Body Measurement System</p>
-        <div class="demo-badge">DEMO MODE</div>
-    </div>
-    <div class="camera-box">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="canvas"></canvas>
-          <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left;">\n   <h3 style="margin-bottom: 10px; color: #fff;">📋 Instructions:</h3>\n   <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">\n    <li>Click "Start Camera" to begin</li>\n    <li>Position yourself 6-8 feet from camera</li>\n    <li>Stand straight with arms slightly away from body</li>\n    <li>Ensure good lighting</li>\n    <li>Enter valid license key for accurate measurements</li>\n    <li>Click "Measure Now" to capture</li>\n   </ol>\n  </div>
-                    <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 600;">🔐 Enter License Key for Full Access</label>
-                  <div style="background: rgba(255,100,100,0.2); border: 2px solid rgba(255,100,100,0.5); padding: 15px; border-radius: 10px; margin: 15px 0; text-align: center;"><p style="margin: 0; font-weight: 600; color: #ffe4e4;">⚠️ License Key Required - Enter a valid license key below to unlock full measurement capabilities</p></div>
-                <input type="text" id="licenseKey" placeholder="XXXXXXXX-XXXXXXXX" style="width: 100%; padding: 12px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(255,255,255,0.2); color: white; font-size: 1em; margin-bottom: 10px;">
-                <button onclick="verifyLicense()" style="width: 100%; padding: 12px; background: #4299e1; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Activate License</button>
-                <div id="licenseStatus" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
+    <!-- License Activation Portal -->
+    <div id="licensePortal" class="portal-container">
+        <div class="portal-box">
+            <div class="header">
+                <div class="license-icon">🔐</div>
+                <h1>Measulor</h1>
+                <p>AI Body Measurement System</p>
             </div>
-        <div class="controls">
-            <button class="btn-primary" id="startBtn" onclick="startCamera()"> disabled style="opacity: 0.5; cursor: not-allowed;"Start Camera</button>
-            <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto( disabled style="opacity: 0.5; cursor: not-allowed;")">Measure Now</button>
-                  <button class="btn-secondary" id="switchBtn" onclick="switchCamera()" style="display:none;">🔄 Switch Camera</button>
+            
+            <div class="input-group">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600;">Enter Your License Key</label>
+                <input type="text" id="licenseKey" placeholder="XXXXXXXX-XXXXXXXX" maxlength="17">
+            </div>
+            
+            <button class="btn-activate" onclick="verifyLicense()">
+                Activate License
+            </button>
+            
+            <div id="licenseStatus" class="status-message"></div>
+            
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px;">Verifying license...</p>
+            </div>
+            
+            <div class="features">
+                <h3 style="margin-bottom: 15px;">What you'll unlock:</h3>
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>Accurate body measurements</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>Real-time camera processing</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>Detailed body analysis</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✓</span>
+                    <span>Body shape detection</span>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="status" id="status">Tap Start Camera to begin</div>
-    <div class="results" id="results"></div>
+
+    <!-- Measurement App (Hidden Initially) -->
+    <div id="measurementApp" class="measurement-app">
+        <div class="header">
+            <h1>Measulor</h1>
+            <p>AI Body Measurement System</p>
+            <div class="demo-badge" id="demoBadge">LICENSED</div>
+        </div>
+        
+        <div class="camera-box">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+            
+            <div class="instruction-box">
+                <h3>📋 Instructions:</h3>
+                <ol>
+                    <li>Click "Start Camera" to begin</li>
+                    <li>Position yourself 6-8 feet from camera</li>
+                    <li>Stand straight with arms slightly away from body</li>
+                    <li>Ensure good lighting</li>
+                    <li>Click "Measure Now" to capture</li>
+                </ol>
+            </div>
+            
+            <div class="controls">
+                <button class="btn-primary" id="startBtn" onclick="startCamera()">Start Camera</button>
+                <button class="btn-secondary hidden" id="captureBtn" onclick="capturePhoto()">Measure Now</button>
+                <button class="btn-secondary" id="switchBtn" onclick="switchCamera()" style="display:none;">🔄 Switch Camera</button>
+            </div>
+        </div>
+        
+        <div class="status" id="status">Ready to measure</div>
+        <div class="results" id="results"></div>
+    </div>
+
     <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        async function startCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-                    currentStream = stream;
-            document.getElementById('startBtn').style.display = 'none';
-                    document.getElementById('switchBtn').style.display = 'block';
-            document.getElementById('captureBtn').classList.remove('hidden');
+        let activeLicenseKey = '';
+        let currentStream = null;
+        let currentFacingMode = 'user';
+
+        // License verification function
+        async function verifyLicense() {
+            const licenseKey = document.getElementById('licenseKey').value.trim();
+            const statusDiv = document.getElementById('licenseStatus');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            if (!licenseKey) {
+                showStatus('Please enter a license key', 'error');
+                return;
+            }
+            
+            // Validate format
+            if (!/^[A-Za-z0-9]{8}-[A-Za-z0-9]{8}$/.test(licenseKey)) {
+                showStatus('Invalid license key format', 'error');
+                return;
+            }
+            
+            // Show loading
+            loadingSpinner.style.display = 'block';
+            statusDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/check-license', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ license_key: licenseKey })
+                });
+                
+                const data = await response.json();
+                loadingSpinner.style.display = 'none';
+                
+                if (data.valid) {
+                    activeLicenseKey = licenseKey;
+                    showStatus('License activated successfully!', 'success');
+                    setTimeout(() => {
+                        showMeasurementApp();
+                    }, 1500);
+                } else {
+                    showStatus('Invalid or expired license key', 'error');
+                }
+            } catch (error) {
+                loadingSpinner.style.display = 'none';
+                showStatus('Error verifying license. Please try again.', 'error');
+            }
         }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('licenseStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message ' + type;
+            statusDiv.style.display = 'block';
+        }
+
+        function showMeasurementApp() {
+            document.getElementById('licensePortal').style.display = 'none';
+            document.getElementById('measurementApp').style.display = 'block';
+        }
+
+        // Camera and measurement functions
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                currentStream = stream;
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('switchBtn').style.display = 'block';
+                document.getElementById('captureBtn').style.display = 'block';
+                document.getElementById('status').textContent = 'Camera ready - Click Measure Now to capture';
+            } catch (error) {
+                document.getElementById('status').textContent = 'Camera access denied';
+            }
+        }
+
         function capturePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            document.getElementById('status').textContent = 'Processing measurements...';
+            
             fetch('/api/process', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.8), license_key: activeLicenseKey })            })
+                body: JSON.stringify({ 
+                    image: canvas.toDataURL('image/jpeg', 0.8), 
+                    license_key: activeLicenseKey 
+                })
+            })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     const m = data.measurements;
-                    document.getElementById('results').innerHTML = `<h3>Your Measurements</h3>
-                    <div class="measure-item"><span>Shoulder Width:</span><span>${m.shoulder_width} cm</span></div>
-                    <div class="measure-item"><span>Hip Width:</span><span>${m.hip_width} cm</span></div>
-                    <div class="measure-item"><span>Torso Length:</span><span>${m.torso_length} cm</span></div>
-                    <div class="measure-item"><span>Arm Length:</span><span>${m.arm_length} cm</span></div>
-                    <div class="measure-item"><span>Leg Length:</span><span>${m.leg_length} cm</span></div>
-                    <div class="measure-item"><span>Est. Height:</span><span>${m.total_height} cm</span></div>
-                    <div class="measure-item"><span>Body Shape:</span><span>${m.body_shape}</span></div>`;
+                    document.getElementById('results').innerHTML = `
+                        <h3>Your Measurements</h3>
+                        <div class="measure-item"><span>Shoulder Width:</span><span>${m.shoulder_width} cm</span></div>
+                        <div class="measure-item"><span>Hip Width:</span><span>${m.hip_width} cm</span></div>
+                        <div class="measure-item"><span>Torso Length:</span><span>${m.torso_length} cm</span></div>
+                        <div class="measure-item"><span>Arm Length:</span><span>${m.arm_length} cm</span></div>
+                        <div class="measure-item"><span>Leg Length:</span><span>${m.leg_length} cm</span></div>
+                        <div class="measure-item"><span>Est. Height:</span><span>${m.total_height} cm</span></div>
+                        <div class="measure-item"><span>Body Shape:</span><span>${m.body_shape}</span></div>`;
                     document.getElementById('results').style.display = 'block';
+                    document.getElementById('status').textContent = 'Measurement complete!';
+                } else {
+                    document.getElementById('status').textContent = 'Measurement failed. Please try again.';
                 }
+            })
+            .catch(() => {
+                document.getElementById('status').textContent = 'Error processing measurements';
             });
         }
 
-                function verifyLicense() {
-            const licenseKey = document.getElementById('licenseKey').value;
-            if (!licenseKey) {
-                alert('Please enter a license key');
-                return;
-            }
-            fetch('/api/check-license', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ license_key: licenseKey })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.valid) {if (data.valid) {
-                alert('License activated successfully!');
-                activeLicenseKey = licenseKey;
-                document.querySelector('.demo-badge').style.display = 'none';
-                document.querySelector('[style*="background: rgba(255,100,100"]').style.display = 'none';
-                const startBtn = document.getElementById('startBtn');
-                startBtn.disabled = false;
-                startBtn.style.opacity = '1';
-                startBtn.style.cursor = 'pointer';
-                const captureBtn = document.getElementById('captureBtn');
-                captureBtn.disabled = false;
-                captureBtn.style.opacity = '1';
-                captureBtn.style.cursor = 'pointer';
-            } else {
-                alert('Invalid license key');
-            }
-        })
-        .catch(() => alert('Error verifying license'));
-        }
-
-                let currentStream = null;
-        let currentFacingMode = 'user';
-        
         async function switchCamera() {
             if (currentStream) {
-                    let activeLicenseKey = '';
                 currentStream.getTracks().forEach(track => track.stop());
             }
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: currentFacingMode } 
-            });
-            video.srcObject = stream;
-            currentStream = stream;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: currentFacingMode } 
+                });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                currentStream = stream;
+            } catch (error) {
+                document.getElementById('status').textContent = 'Camera switch failed';
+            }
         }
+
+        // Add enter key support for license input
+        document.getElementById('licenseKey').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verifyLicense();
+            }
+        });
     </script>
 </body>
-</html>'''
+</html>
+'''
 
 @app.route('/api/process', methods=['POST'])
 def process_image():
