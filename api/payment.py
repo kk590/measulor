@@ -10,14 +10,6 @@ import hashlib
 import hmac
 from cryptography.fernet import Fernet
 
-payment_bp = Blueprint('payment', __name__)
-
-# Your GPay UPI ID for manual payments (FREE - 0% fees)'UPI_ID', 'yourname@okaxis')
-YOUR_UPI_ID = os.getenv('UPI_ID', 'yourname@okaxis')  # Replace with your UPI ID
-GPAY_UPI_ID = os.getenv('GPAY_UPI_ID', 'yourname@okbi')
-PRODUCT_PRICE = "299"  # ₹299 INR
-PRODUCT_NAME = "Measulor Premium"
-
 # Cryptographic security configuration
 ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', Fernet.generate_key().decode())  # Generate in production
 SECRET_KEY = os.getenv('SECRET_KEY', secrets.token_hex(32))  # For HMAC signing
@@ -44,7 +36,7 @@ PAYMENT_PAGE_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Measulor Premium - Payment</title>
+    <title>Measulor Premium - License Activation</title>
     <style>
         * {
             margin: 0;
@@ -72,29 +64,37 @@ PAYMENT_PAGE_HTML = """
             text-align: center;
             margin-bottom: 30px;
         }
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
         .header h1 {
             color: #764ba2;
             font-size: 28px;
             margin-bottom: 10px;
         }
-        .price-tag {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 32px;
-            font-weight: bold;
-            display: inline-block;
-            margin: 20px 0;
+        .header p {
+            color: #666;
+            font-size: 16px;
         }
         .features {
             list-style: none;
             margin: 20px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
         }
         .features li {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            padding: 8px 0;
             color: #555;
+            font-size: 14px;
         }
         .features li:before {
             content: "✓";
@@ -102,10 +102,42 @@ PAYMENT_PAGE_HTML = """
             font-weight: bold;
             margin-right: 10px;
         }
-        .payment-section {
+        .activation-section {
             margin-top: 30px;
         }
-        .upi-button {
+        .form-group {
+            margin: 20px 0;
+        }
+        .form-group label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input[type="text"] {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .help-text {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .activate-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -115,73 +147,66 @@ PAYMENT_PAGE_HTML = """
             font-weight: bold;
             cursor: pointer;
             width: 100%;
-            margin: 10px 0;
+            margin-top: 10px;
             transition: transform 0.2s;
         }
-        .upi-button:hover {
-            transform: scale(1.05);
+        .activate-btn:hover {
+            transform: scale(1.02);
         }
-        .upi-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            display: none;
+        .activate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
-        .upi-id {
-            background: white;
-            padding: 15px;
-            border-radius: 5px;
-            font-weight: bold;
-            color: #764ba2;
-            text-align: center;
-            margin: 10px 0;
-            border: 2px dashed #667eea;
-        }
-        .instructions {
-            color: #666;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .form-group {
-            margin: 15px 0;
-        }
-        .form-group label {
-            display: block;
-            color: #555;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #eee;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        .submit-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
+        .status-message {
             margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.3s ease;
         }
-        .submit-btn:hover {
-            background: #218838;
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Measulor Premium</h1>
-            <p>AI Body Measurement System</p>
-            <div class="price-tag">₹299</div>
+            <div class="icon">🔑</div>
+            <h1>Activate Measulor Premium</h1>
+            <p>Enter your license key to unlock premium features</p>
         </div>
         
         <ul class="features">
@@ -192,70 +217,126 @@ PAYMENT_PAGE_HTML = """
             <li>Priority customer support</li>
         </ul>
         
-        <div class="payment-section">
-            <button class="upi-button" onclick="showAutomaticPayment()">Pay with GPay/UPI</button>
-            
-            <div id="upi-info" class="upi-info">
-                <h3 style="color: #764ba2; margin-bottom: 15px;">Pay using GPay/UPI</h3>
-                <div class="upi-id">{{ upi_id }}</div>
-                
-                <div class="instructions">
-                    <p><strong>Instructions:</strong></p>
-                    <ol>
-                        <li>Open Google Pay or any UPI app</li>
-                        <li>Send ₹299 to the UPI ID above</li>
-                        <li>Enter your transaction ID below</li>
-                    </ol>
+        <div class="activation-section">
+            <form id="activation-form" onsubmit="activateLicense(event)">
+                <div class="form-group">
+                    <label>License Key:</label>
+                    <input 
+                        type="text" 
+                        id="license_key" 
+                        required 
+                        placeholder="XXXX-XXXX-XXXX-XXXX"
+                        maxlength="19"
+                        oninput="formatLicenseKey(this)"
+                        autofocus
+                    >
+                    <div class="help-text">Enter your 16-character license key</div>
                 </div>
                 
-                <form id="payment-form" onsubmit="submitPayment(event)">
-                    <div class="form-group">
-                        <label>Your Email:</label>
-                        <input type="email" id="email" required placeholder="your@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label>UPI Transaction ID:</label>
-                        <input type="text" id="txn_id" required placeholder="e.g., 123456789012">
-                    </div>
-                    <button type="submit" class="submit-btn">Verify Payment & Get License</button>
-                </form>
-            </div>
+                <button type="submit" class="activate-btn" id="activate-btn">
+                    Activate License
+                </button>
+            </form>
+            
+            <div id="status-message" class="status-message"></div>
         </div>
     </div>
     
     <script>
-        function showAutomaticPayment() {
-            document.getElementById('upi-info').style.display = 'block';
+        function formatLicenseKey(input) {
+            let value = input.value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+            let formatted = '';
+            
+            for (let i = 0; i < value.length && i < 16; i++) {
+                if (i > 0 && i % 4 === 0) {
+                    formatted += '-';
+                }
+                formatted += value[i];
+            }
+            
+            input.value = formatted;
         }
         
-        function submitPayment(event) {
+        function showStatus(message, isSuccess) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message ' + (isSuccess ? 'success' : 'error');
+            statusDiv.style.display = 'block';
+            
+            if (isSuccess) {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        function activateLicense(event) {
             event.preventDefault();
             
-            const email = document.getElementById('email').value;
-            const txn_id = document.getElementById('txn_id').value;
+            const licenseKey = document.getElementById('license_key').value;
+            const submitBtn = document.getElementById('activate-btn');
             
-            fetch('/api/payment/verify', {
+            // Validate license key format
+            if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(licenseKey)) {
+                showStatus('Invalid license key format. Please use format: XXXX-XXXX-XXXX-XXXX', false);
+                return;
+            }
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Activating<span class="loading"></span>';
+            
+            // Keygen API configuration
+            const KEYGEN_ACCOUNT_ID = 'YOUR_ACCOUNT_ID'; // Replace with your Keygen account ID
+            const KEYGEN_PRODUCT_ID = 'YOUR_PRODUCT_ID'; // Replace with your product ID (optional)
+            
+            // Validate license with Keygen
+            fetch(`https://api.keygen.sh/v1/accounts/${KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/vnd.api+json',
+                    'Accept': 'application/vnd.api+json'
                 },
                 body: JSON.stringify({
-                    email: email,
-                    transaction_id: txn_id,
-                    amount: '299'
+                    meta: {
+                        key: licenseKey
+                    }
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    alert('Payment verified! Your license key: ' + data.license_key);
-                    window.location.href = '/success?key=' + data.license_key;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Activate License';
+                
+                if (data.meta && data.meta.valid === true) {
+                    // License is valid
+                    const license = data.data;
+                    showStatus('License activated successfully! Redirecting...', true);
+                    
+                    // Store license info (you can customize this)
+                    localStorage.setItem('measulor_license', JSON.stringify({
+                        key: licenseKey,
+                        id: license.id,
+                        activated: true,
+                        activatedAt: new Date().toISOString()
+                    }));
+                    
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 2000);
                 } else {
-                    alert('Error: ' + data.message);
+                    // License is invalid
+                    const errorMsg = data.meta && data.meta.detail 
+                        ? data.meta.detail 
+                        : 'Invalid license key. Please check and try again.';
+                    showStatus(errorMsg, false);
                 }
             })
             .catch(error => {
-                alert('Error processing payment. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Activate License';
+                showStatus('Error validating license. Please try again.', false);
+                console.error('Keygen validation error:', error);
             });
         }
     </script>
@@ -263,44 +344,8 @@ PAYMENT_PAGE_HTML = """
 </html>
 """
 
-@payment_bp.route('/')
-def payment_page():
-    return render_template_string(PAYMENT_PAGE_HTML, upi_id=YOUR_UPI_ID)
 
-@payment_bp.route('/verify', methods=['POST'])
-def verify_payment():
-    data = request.get_json()
-    email = data.get('email')
-        
-    # Hash transaction ID for security
-    transaction_hash = hashlib.sha256(transaction_id.encode()).hexdigest()[:16]
-    transaction_id = data.get('transaction_id')
-    amount = data.get('amount')
-    
-    # Generate order ID
-    order_id = f"ORD_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}"
-    
-    # Generate license key
-    license_key = generate_license_key()
-    
-    # Store order
-    orders_db[order_id] = {
-        'email': encrypted_email,  # ENCRYPTED        'transaction_id': transaction_id,
-                'transaction_hash': transaction_hash,  # Store hashed version
-        'amount': amount,
-        'license_key': license_key,
-                'license_signature': generate_hmac_signature(license_key),  # HMAC signature
-        'timestamp': datetime.now().isoformat(),
-        'status': 'pending_verification'
-    }
-    
-    # Store license
-        # Encrypt sensitive email data
-    encrypted_email = encrypt_data(email)
 
-    def encrypt_data(data: str) -> str:
-    """Encrypt sensitive data using Fernet symmetric encryption"""
-    return cipher.encrypt(data.encode()).decode()
 
 def decrypt_data(encrypted_data: str) -> str:
     """Decrypt encrypted data"""
