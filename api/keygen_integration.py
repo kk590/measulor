@@ -8,7 +8,7 @@ import requests
 from datetime import datetime, timedelta
 
 # Keygen Configuration
-KEY GEN_ACCOUNT_ID = os.getenv('KEYGEN_ACCOUNT_ID', '51bb33ef-d469-4c06-ac4b-68b65ce1c647')
+KEYGEN_ACCOUNT_ID = os.getenv('KEYGEN_ACCOUNT_ID', '51bb33ef-d469-4c06-ac4b-68b65ce1c647')
 KEYGEN_PRODUCT_TOKEN = os.getenv('KEYGEN_PRODUCT_TOKEN', 'prod-baddb474348d6ab89817af26148cf1468759')
 KEYGEN_API_URL = 'https://api.keygen.sh/v1/accounts/{}/licenses'.format(KEYGEN_ACCOUNT_ID)
 
