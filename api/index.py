@@ -129,11 +129,11 @@ def index():
             
             <div class="input-group">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600;">Enter Your License Key</label>
-                <input type="text" id="licenseKey" placeholder="XXXXXXXX-XXXXXXXX" maxlength="17">
+                <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="39">
             </div>
             
             <button class="btn-activate" onclick="verifyLicense()">
-                Activate License
+                Activate License39
             </button>
             
             <div id="licenseStatus" class="status-message"></div>
@@ -216,7 +216,7 @@ def index():
             }
             
             // Validate format
-            if (!/^[A-Za-z0-9]{8}-[A-Za-z0-9]{8}$/.test(licenseKey)) {
+            if (!/^[A-Z0-9]{4}(-[A-Z0-9]{4}){7}$/.test(licenseKey)) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
