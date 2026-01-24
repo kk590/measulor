@@ -6,6 +6,9 @@ This module provides license validation using Keygen API
 import os
 import requests
 from datetime import datetime, timedelta
+import sys
+
+
 
 # Keygen Configuration
 KEYGEN_ACCOUNT_ID = os.getenv('KEYGEN_ACCOUNT_ID', '51bb33ef-d469-4c06-ac4b-68b65ce1c647')
@@ -44,7 +47,9 @@ def verify_license_with_keygen(license_key):
         })
         
         print(f'Keygen API Response Status: {response.status_code}')
+        sys.stdout.flush()
         print(f'Keygen API Response Body: {response.text}')
+        sys.stdout.flush()
         
         if response.status_code == 200:
             data = response.json()
@@ -60,8 +65,10 @@ def verify_license_with_keygen(license_key):
             return is_valid, data
         else:
             print(f'Keygen validation failed with status {response.status_code}: {response.text}')
+            sys.stdout.flush()
             return False, {'error': f'API returned status {response.status_code}', 'details': response.text}
         
     except Exception as e:
         print(f'Error validating license: {str(e)}')
+        sys.stdout.flush()
         return False, {'error': str(e)}
