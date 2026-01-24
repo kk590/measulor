@@ -42,8 +42,6 @@ def verify_license_with_keygen(license_key):
                 'key': license_key
             }
         })
-            }
-        })
         
         if response.status_code == 200:
             data = response.json()
@@ -59,56 +57,7 @@ def verify_license_with_keygen(license_key):
             return is_valid, data
         else:
             return False, {'error': f'API returned status {response.status_code}'}
-            
+        
     except Exception as e:
         print(f'Error validating license: {str(e)}')
-        return False, {'error': str(e)}
-
-def get_license_info(license_key):
-    """
-    Get detailed license information from Keygen
-    """
-    try:
-        url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/{license_key}'
-        
-        headers = {
-            'Authorization': f'Bearer {KEYGEN_PRODUCT_TOKEN}',
-            'Accept': 'application/vnd.api+json'
-        }
-        
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-            return True, response.json()
-        else:
-            return False, {'error': f'API returned status {response.status_code}'}
-            
-    except Exception as e:
-        return False, {'error': str(e)}
-
-def activate_license(license_key, metadata=None):
-    """
-    Activate a license (check-in)
-    """
-    try:
-        url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/{license_key}/actions/check-in'
-        
-        headers = {
-            'Authorization': f'Bearer {KEYGEN_PRODUCT_TOKEN}',
-            'Content-Type': 'application/vnd.api+json',
-            'Accept': 'application/vnd.api+json'
-        }
-        
-        payload = {}
-        if metadata:
-            payload['meta'] = metadata
-        
-        response = requests.post(url, headers=headers, json=payload)
-        
-        if response.status_code in [200, 201]:
-            return True, response.json()
-        else:
-            return False, {'error': f'API returned status {response.status_code}'}
-            
-    except Exception as e:
         return False, {'error': str(e)}
