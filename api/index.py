@@ -133,7 +133,7 @@ def index():
             </div>
             
             <button class="btn-activate" onclick="verifyLicense()">
-                Activate License39
+                Activate License
             </button>
             
             <div id="licenseStatus" class="status-message"></div>
