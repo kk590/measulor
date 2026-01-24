@@ -28,7 +28,7 @@ def verify_license_with_keygen(license_key):
             if datetime.now() - cache_time < timedelta(minutes=5):
                 return cached_data.get('valid', False), cached_data.get('data', {})
         
-        # Validate with Keygen API
+        # Validate with Keygen API  
         url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key'
         
         headers = {
@@ -43,6 +43,9 @@ def verify_license_with_keygen(license_key):
             }
         })
         
+        print(f'Keygen API Response Status: {response.status_code}')
+        print(f'Keygen API Response Body: {response.text}')
+        
         if response.status_code == 200:
             data = response.json()
             is_valid = data.get('meta', {}).get('valid', False)
@@ -56,7 +59,8 @@ def verify_license_with_keygen(license_key):
             
             return is_valid, data
         else:
-            return False, {'error': f'API returned status {response.status_code}'}
+            print(f'Keygen validation failed with status {response.status_code}: {response.text}')
+            return False, {'error': f'API returned status {response.status_code}', 'details': response.text}
         
     except Exception as e:
         print(f'Error validating license: {str(e)}')
