@@ -29,7 +29,7 @@ def verify_license_with_keygen(license_key):
                 return cached_data.get('valid', False), cached_data.get('data', {})
         
         # Validate with Keygen API
-        url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/{license_key}/actions/validate'
+        url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key'
         
         headers = {
             'Authorization': f'Bearer {KEYGEN_PRODUCT_TOKEN}',
@@ -39,9 +39,9 @@ def verify_license_with_keygen(license_key):
         
         response = requests.post(url, headers=headers, json={
             'meta': {
-                'scope': {
-                    'product': '932d3cfd-d7f4-4e46-b0be-09123e06bc19'  # Measulor Product ID
-                }
+                'key': license_key
+            }
+        })
             }
         })
         
