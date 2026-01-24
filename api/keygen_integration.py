@@ -37,8 +37,10 @@ def verify_license_with_keygen(license_key):
         headers = {
             
             'Content-Type': 'application/vnd.api+json',
-            'Accept': 'application/vnd.api+json'
-        }
+            'Accept': 'application/vnd.api+json,
+        
+                    'Authorization': f'Bearer {KEYGEN_PRODUCT_TOKEN}',
+            }
         
         response = requests.post(url, headers=headers, json={
             'meta': {
