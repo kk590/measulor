@@ -36,19 +36,22 @@ def generate_license_key():
     return f"{raw_key}-{signature}"
 
 
-
 def verify_license(license_key):
-
-    # Check if already verified in local cache    # Use Keygen integration for license validation
+    # Use Keygen integration for license validation
     try:
         is_valid, license_data = verify_license_with_keygen(license_key)
         return is_valid
     except Exception as e:
         print(f'Error verifying license with Keygen: {str(e)}')
         return False
+
+
+def generate_demo_measurements(width, height):
+    """Generate demo measurements for unlicensed users"""
+    measurements = {
         'shoulder_width': round(random.uniform(38.0, 50.0), 1),
         'hip_width': round(random.uniform(32.0, 42.0), 1),
-                'torso_length': round(random.uniform(55.0, 70.0), 1),
+        'torso_length': round(random.uniform(55.0, 70.0), 1),
         'arm_length': round(random.uniform(55.0, 65.0), 1),
         'leg_length': round(random.uniform(85.0, 105.0), 1)
     }
@@ -352,14 +355,15 @@ def process_image():
         if not image_data:
             return jsonify({'success': False, 'message': 'No image provided'})
         if 'base64,' in image_data:
-                        image_data = image_data.split('base64,')[1]
+            image_data = image_data.split('base64,')[1]
         image_bytes = base64.b64decode(image_data)
         image = Image.open(io.BytesIO(image_bytes))
         width, height = image.size
         license_key = data.get('license_key', '')        
         # Check license and generate appropriate measurements
         is_licensed = verify_license(license_key)
-        if is_licensed:            # Real measurements using image analysis
+        if is_licensed:            
+            # Real measurements using image analysis
             measurements = {
                 'shoulder_width': round(width * 0.28, 1),
                 'hip_width': round(width * 0.25, 1),
@@ -380,7 +384,7 @@ def process_image():
         else:
             measurements = generate_demo_measurements(width, height)
             message = 'Demo measurements generated'       
-        return jsonify({'success': True,'message': message})
+        return jsonify({'success': True, 'measurements': measurements, 'message': message})
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
@@ -397,7 +401,7 @@ def get_license():
         'license_key': license_key,
         'message': 'License key generated'
     })
-#Complete rewrite: Clean index.py with license key 
+
 @app.route('/api/check-license', methods=['POST'])
 def check_license():
     data = request.json
@@ -421,7 +425,7 @@ def check_license():
 def health():
     return jsonify({'status': 'ok', 'message': 'Measulor API running', 'mode': 'demo'})
 
-            # Key Generation Integration - Bulk License Key Generation
+# Key Generation Integration - Bulk License Key Generation
 @app.route('/api/keygen/generate', methods=['POST'])
 def keygen_generate():
     """Generate bulk license keys with customizable options"""
@@ -499,7 +503,7 @@ def keygen_validate(license_key):
         license_data = licenses[license_key]
         created_at = datetime.fromisoformat(license_data['created_at'])
         expiry_days = license_data.get('expiry_days', 365)
-        expiry_date = created_at + datetime.timedelta(days=expiry_days)
+        expiry_date = created_at + timedelta(days=expiry_days)
         
         is_expired = datetime.now() > expiry_date
         
@@ -524,7 +528,7 @@ def keygen_stats():
         generated = sum(1 for k in licenses.values() if k.get('status') == 'generated')
         activated = sum(1 for k in licenses.values() if k.get('status') == 'activated')
         expired = sum(1 for k in licenses.values() if datetime.now() > 
-                      (datetime.fromisoformat(k['created_at']) + datetime.timedelta(days=k.get('expiry_days', 365))))
+                      (datetime.fromisoformat(k['created_at']) + timedelta(days=k.get('expiry_days', 365))))
         
         return jsonify({
             'total_keys': total_keys,
@@ -535,10 +539,8 @@ def keygen_stats():
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-
-
+if __name__ == '__main__':
+    app.run()
 
 if __name__ == '__main__':
     app.run()
