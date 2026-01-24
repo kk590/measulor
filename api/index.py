@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from PIL import Image
 
 import requests
+from keygen_integration import verify_license_with_keygen
 
 app = Flask(__name__)
 
@@ -38,15 +39,13 @@ def generate_license_key():
 
 def verify_license(license_key):
 
-    # Check if already verified in local cache
-    if license_key in licenses:
-        license_data = licenses[license_key]
-        if license_data.get('active', False):
-            return True
-    
-    
-    return False
-    measurements = {
+    # Check if already verified in local cache    # Use Keygen integration for license validation
+    try:
+        is_valid, license_data = verify_license_with_keygen(license_key)
+        return is_valid
+    except Exception as e:
+        print(f'Error verifying license with Keygen: {str(e)}')
+        return False
         'shoulder_width': round(random.uniform(38.0, 50.0), 1),
         'hip_width': round(random.uniform(32.0, 42.0), 1),
                 'torso_length': round(random.uniform(55.0, 70.0), 1),
