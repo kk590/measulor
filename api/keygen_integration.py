@@ -35,7 +35,7 @@ def verify_license_with_keygen(license_key):
         url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key'
         
         headers = {
-            'Authorization': f'Bearer {KEYGEN_PRODUCT_TOKEN}',
+            
             'Content-Type': 'application/vnd.api+json',
             'Accept': 'application/vnd.api+json'
         }
