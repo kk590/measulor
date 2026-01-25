@@ -10,6 +10,7 @@ import sys
 
 # Keygen Configuration
 KEYGEN_ACCOUNT_ID = os.getenv('KEYGEN_ACCOUNT_ID', '51bb33ef-d469-4c06-ac4b-68b65ce1c647')
+KEYGEN_PRODUCT_ID = os.getenv('KEYGEN_PRODUCT_ID', '932d3cfd-d525-4c12-8f81-06a19f6fe088')
 KEYGEN_PRODUCT_TOKEN = os.getenv('KEYGEN_PRODUCT_TOKEN', 'prod-baddb474348d6ab89817af26148cf1468759')
 KEYGEN_API_URL = 'https://api.keygen.sh/v1/accounts/{}/licenses'.format(KEYGEN_ACCOUNT_ID)
 
@@ -39,7 +40,10 @@ def verify_license_with_keygen(license_key):
         
         response = requests.post(url, headers=headers, json={
             'meta': {
-                'key': license_key
+                'key': license_key,
+                'scope': {
+                    'product': KEYGEN_PRODUCT_ID
+                }
             }
         })
         
