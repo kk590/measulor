@@ -37,6 +37,9 @@ def verify_license_with_keygen(license_key):
             'Content-Type': 'application/vnd.api+json',
             'Accept': 'application/vnd.api+json'
         }
+                
+        print(f'Validating license key: {license_key}')
+        sys.stdout.flush()
         
         response = requests.post(url, headers=headers, json={
             'meta': {
