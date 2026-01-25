@@ -2,12 +2,10 @@
 Keygen.sh License Integration for Measulor
 This module provides license validation using Keygen API
 """
-
 import os
 import requests
 from datetime import datetime, timedelta
 import sys
-
 
 
 # Keygen Configuration
@@ -31,16 +29,13 @@ def verify_license_with_keygen(license_key):
             if datetime.now() - cache_time < timedelta(minutes=5):
                 return cached_data.get('valid', False), cached_data.get('data', {})
         
-        # Validate with Keygen API  
+        # Validate with Keygen API 
         url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key'
         
         headers = {
-            
             'Content-Type': 'application/vnd.api+json',
-            'Accept': 'application/vnd.api+json,
-        
-                    'Authorization': f'Bearer {KEYGEN_PRODUCT_TOKEN}',
-            }
+            'Accept': 'application/vnd.api+json'
+        }
         
         response = requests.post(url, headers=headers, json={
             'meta': {
@@ -68,9 +63,9 @@ def verify_license_with_keygen(license_key):
         else:
             print(f'Keygen validation failed with status {response.status_code}: {response.text}')
             sys.stdout.flush()
-            return False, {'error': f'API returned status {response.status_code}', 'details': response.text}
-        
+            return False, {}
+            
     except Exception as e:
         print(f'Error validating license: {str(e)}')
         sys.stdout.flush()
-        return False, {'error': str(e)}
+        return False, {}
