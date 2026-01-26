@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -7,6 +8,7 @@ import io
 import math
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Initialize MediaPipe Pose
 mp_pose = mp.solutions.pose
