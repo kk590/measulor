@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import base64
 import io
 import os
@@ -15,6 +16,7 @@ import requests
 from .keygen_integration import verify_license_with_keygen
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 
 # License key system with cryptography
