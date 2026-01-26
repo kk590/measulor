@@ -438,7 +438,7 @@ def keygen_generate():
         expiry_days = data.get('expiry_days', 365)  # 1 year by default
         
         if count > 100:
-            return jsonify({'error': 'Maximum 100 keys per request'}), 400
+            return jsonify({'error': 'Maximum 100 keys per request'}) 
         
         generated_keys = []
         for _ in range(count):
@@ -460,8 +460,8 @@ def keygen_generate():
             'product': product,
             'expiry_days': expiry_days
         })
-    
-        return jsonify({'success': False, 'error': str(e)}) 
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/keygen/activate', methods=['POST'])
 def keygen_activate():
@@ -477,7 +477,7 @@ def keygen_activate():
         license_data = licenses[license_key]
         
         if license_data.get('status') != 'generated':
-            return jsonify({'error': 'License key already activated'}
+            return jsonify({'error': 'License key already activated'})
         
         # Activate the license
         licenses[license_key].update({
@@ -491,9 +491,9 @@ def keygen_activate():
             'message': 'License key activated',
             'license_key': license_key,
             'email': email
-        }) 
+        })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}) 
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/keygen/validate/<license_key>', methods=['GET'])
 def keygen_validate(license_key):
@@ -518,9 +518,9 @@ def keygen_validate(license_key):
             'activated_at': license_data.get('activation_date'),
             'expiry_date': expiry_date.isoformat(),
             'expired': is_expired
-        }) 
+        })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}) 
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/keygen/stats', methods=['GET'])
 def keygen_stats():
@@ -540,7 +540,7 @@ def keygen_stats():
             'active_keys': total_keys - expired
         })
     except Exception as e:
-                return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': str(e)})
 
 
 @app.route('/api/measure', methods=['POST'])
@@ -572,12 +572,11 @@ def api_measure():
             return jsonify(result)
         else:
             return jsonify(result)
-    
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'}), 
-
+            'message': f'Error: {str(e)}'
+        }) 
 
 
 if __name__ == '__main__':
