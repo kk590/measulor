@@ -541,7 +541,8 @@ def keygen_stats():
         }), 200
     except Exception as e:
 
-        @app.route('/api/measure', methods=['POST'])
+
+@app.route('/api/measure', methods=['POST'])
 def api_measure():
     """API endpoint for body measurements from uploaded image"""
     try:
@@ -575,9 +576,9 @@ def api_measure():
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
-        }), 500
-        return jsonify({'success': False, 'error': str(e)}), 500
-if __name__ == '__main__':
+                }), 500
+
+== '__main__':
     app.run()
 
 if __name__ == '__main__':
