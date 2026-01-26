@@ -460,7 +460,8 @@ def keygen_generate():
             'product': product,
             'expiry_days': expiry_days
         }), 201
-    except Exception as e:
+    543
+    
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/keygen/activate', methods=['POST'])
@@ -540,6 +541,7 @@ def keygen_stats():
             'active_keys': total_keys - expired
         }), 200
     except Exception as e:
+                return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/measure', methods=['POST'])
