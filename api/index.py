@@ -459,8 +459,7 @@ def keygen_generate():
             'keys': generated_keys,
             'product': product,
             'expiry_days': expiry_days
-        }), 201
-    543
+        })
     
         return jsonify({'success': False, 'error': str(e)}) 
 
@@ -473,12 +472,12 @@ def keygen_activate():
         email = data.get('email')
         
         if license_key not in licenses:
-            return jsonify({'error': 'Invalid license key'}), 404
+            return jsonify({'error': 'Invalid license key'})
         
         license_data = licenses[license_key]
         
         if license_data.get('status') != 'generated':
-            return jsonify({'error': 'License key already activated'}), 400
+            return jsonify({'error': 'License key already activated'}
         
         # Activate the license
         licenses[license_key].update({
@@ -501,7 +500,7 @@ def keygen_validate(license_key):
     """Validate license key and check expiry status"""
     try:
         if license_key not in licenses:
-            return jsonify({'valid': False, 'message': 'Invalid license key'}), 404
+            return jsonify({'valid': False, 'message': 'Invalid license key'})
         
         license_data = licenses[license_key]
         created_at = datetime.fromisoformat(license_data['created_at'])
@@ -553,7 +552,7 @@ def api_measure():
         
         # Check if image is in request
         if 'image' not in request.files:
-            return jsonify({'success': False, 'message': 'No image provided'}), 400
+            return jsonify({'success': False, 'message': 'No image provided'})
         
         file = request.files['image']
         
@@ -577,11 +576,9 @@ def api_measure():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
-                }), 
+            'message': f'Error: {str(e)}'}), 
 
-== '__main__':
-    app.run()
+
 
 if __name__ == '__main__':
     app.run()
