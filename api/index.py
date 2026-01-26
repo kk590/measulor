@@ -540,6 +540,42 @@ def keygen_stats():
             'active_keys': total_keys - expired
         }), 200
     except Exception as e:
+
+        @app.route('/api/measure', methods=['POST'])
+def api_measure():
+    """API endpoint for body measurements from uploaded image"""
+    try:
+        # Import measure module
+        from .measure import process_image_measurements
+        
+        # Check if image is in request
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'message': 'No image provided'}), 400
+        
+        file = request.files['image']
+        
+        # Read and validate image
+        image_bytes = file.read()
+        from PIL import Image as PILImage
+        image = PILImage.open(io.BytesIO(image_bytes))
+        
+        # Convert RGBA to RGB if needed
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+        
+        # Process measurements
+        result = process_image_measurements(image)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
         return jsonify({'success': False, 'error': str(e)}), 500
 if __name__ == '__main__':
     app.run()
