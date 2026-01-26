@@ -462,7 +462,7 @@ def keygen_generate():
         }), 201
     543
     
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}) 
 
 @app.route('/api/keygen/activate', methods=['POST'])
 def keygen_activate():
@@ -492,9 +492,9 @@ def keygen_activate():
             'message': 'License key activated',
             'license_key': license_key,
             'email': email
-        }), 200
+        }) 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}) 
 
 @app.route('/api/keygen/validate/<license_key>', methods=['GET'])
 def keygen_validate(license_key):
@@ -519,9 +519,9 @@ def keygen_validate(license_key):
             'activated_at': license_data.get('activation_date'),
             'expiry_date': expiry_date.isoformat(),
             'expired': is_expired
-        }), 200
+        }) 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}) 
 
 @app.route('/api/keygen/stats', methods=['GET'])
 def keygen_stats():
@@ -539,9 +539,9 @@ def keygen_stats():
             'activated_keys': activated,
             'expired_keys': expired,
             'active_keys': total_keys - expired
-        }), 200
+        })
     except Exception as e:
-                return jsonify({'success': False, 'error': str(e)}), 500
+                return jsonify({'success': False, 'error': str(e)})
 
 
 @app.route('/api/measure', methods=['POST'])
@@ -570,15 +570,15 @@ def api_measure():
         result = process_image_measurements(image)
         
         if result['success']:
-            return jsonify(result), 200
+            return jsonify(result)
         else:
-            return jsonify(result), 400
+            return jsonify(result)
     
     except Exception as e:
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
-                }), 500
+                }), 
 
 == '__main__':
     app.run()
