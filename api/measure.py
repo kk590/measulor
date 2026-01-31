@@ -30,8 +30,8 @@ def estimate_pixels_per_cm(landmarks, image_height):
         ear = landmarks[7]
         head_width_px = calculate_distance(nose, ear)
         # Average head width is ~15cm
-        avg_head_width_cm = 18  # More accurate average head width        pixels_per_cm_head = head_width_px / avg_head_width_cm
-        
+            avg_head_width_cm = 18  # More accurate average head width
+                    pixels_per_cm_head = head_width_px / avg_head_width_cm
     # Method 2: Use shoulder-to-hip ratio for better accuracy
     if 11 in landmarks and 23 in landmarks:
         shoulder_to_hip_px = calculate_distance(landmarks[11], landmarks[23])
