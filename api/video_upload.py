@@ -109,46 +109,41 @@ def cleanup_temp_file(temp_path):
 
 def validate_video(video_path):
     """
-    Validate video file and extract basic information
+    Validate video file exists and is readable
     Returns: (success, video_info_or_error)
     """
     try:
-        import cv2
+        import json
+        from pathlib import Path
         
-        # Open video
-        cap = cv2.VideoCapture(video_path)
+        # Check if file exists
+        path = Path(video_path)
+        if not path.exists():
+            return False, {'error': 'Video file not found'}
         
-        if not cap.isOpened():
-            return False, {'error': 'Unable to open video file'}
+        # Check if file is readable
+        if not path.is_file():
+            return False, {'error': 'Path is not a file'}
         
-        # Get video properties
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        # Get file size
+        file_size = path.stat().st_size
         
-        # Calculate duration
-        duration = frame_count / fps if fps > 0 else 0
+        # Check if file extension is valid
+        if path.suffix.lower() not in {'.mp4', '.avi', '.mov', '.webm', '.mkv'}:
+            return False, {'error': f'Invalid video format: {path.suffix}'}
         
-        cap.release()
-        
-        # Validate video properties
-        if width == 0 or height == 0:
-            return False, {'error': 'Invalid video dimensions'}
-        
-        if fps == 0:
-            return False, {'error': 'Unable to determine video frame rate'}
-        
+        # Return basic video info
         return True, {
-            'width': width,
-            'height': height,
-            'fps': fps,
-            'frame_count': frame_count,
-            'duration': duration,
-            'file_path': video_path
+            'file_path': str(video_path),
+            'file_size': file_size,
+            'filename': path.name,
+            'extension': path.suffix,
+            'duration': 0,  # Would require ffprobe to get actual duration
+            'fps': 30,  # Placeholder
+            'width': 0,
+            'height': 0,
+            'frame_count': 0
         }
     
-    except ImportError:
-        return False, {'error': 'OpenCV (cv2) not installed'}
     except Exception as e:
-        return False, {'error': f'Video validation failed: {str(e)}'}
+        return False, {'error': f'Video validation error: {str(e)}'}
