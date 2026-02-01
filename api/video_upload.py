@@ -106,3 +106,49 @@ def cleanup_temp_file(temp_path):
     except Exception as e:
         print(f"Error cleaning up temp file: {e}")
         return False
+
+def validate_video(video_path):
+    """
+    Validate video file and extract basic information
+    Returns: (success, video_info_or_error)
+    """
+    try:
+        import cv2
+        
+        # Open video
+        cap = cv2.VideoCapture(video_path)
+        
+        if not cap.isOpened():
+            return False, {'error': 'Unable to open video file'}
+        
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        # Calculate duration
+        duration = frame_count / fps if fps > 0 else 0
+        
+        cap.release()
+        
+        # Validate video properties
+        if width == 0 or height == 0:
+            return False, {'error': 'Invalid video dimensions'}
+        
+        if fps == 0:
+            return False, {'error': 'Unable to determine video frame rate'}
+        
+        return True, {
+            'width': width,
+            'height': height,
+            'fps': fps,
+            'frame_count': frame_count,
+            'duration': duration,
+            'file_path': video_path
+        }
+    
+    except ImportError:
+        return False, {'error': 'OpenCV (cv2) not installed'}
+    except Exception as e:
+        return False, {'error': f'Video validation failed: {str(e)}'}
