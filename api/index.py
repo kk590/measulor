@@ -14,6 +14,7 @@ from PIL import Image
 
 import requests
 from .keygen_integration import verify_license_with_keygen
+from .video_measurement_pipeline import VideoMeasurementPipeline, process_video_simple
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -576,7 +577,66 @@ def api_measure():
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
-        }) 
+        })
+
+
+# Video measurement endpoint
+@app.route('/measure-video', methods=['POST'])
+def measure_video():
+    """
+    Process video for body measurements
+    Accepts: video file (mp4, mov, avi)
+    Returns: Body measurements with quality analysis
+    """
+    try:
+        # Get video file from request
+        if 'video' not in request.files:
+            return jsonify({
+                'success': False,
+                'message': 'No video file provided'
+            }), 400
+        
+        video_file = request.files['video']
+        
+        if video_file.filename == '':
+            return jsonify({
+                'success': False,
+                'message': 'No video file selected'
+            }), 400
+        
+        # Get optional reference height
+        reference_height = request.form.get('height_cm', type=float)
+        
+        # Save video temporarily
+        import tempfile
+        temp_path = os.path.join(tempfile.gettempdir(), 'upload_' + video_file.filename)
+        video_file.save(temp_path)
+        
+        # Process video through pipeline
+        pipeline = VideoMeasurementPipeline(reference_height)
+        success, result = pipeline.process_video(temp_path, max_frames=30)
+        
+        # Cleanup temp file
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        if success:
+            summary = pipeline.get_summary()
+            return jsonify({
+                'success': True,
+                'data': summary,
+                'full_results': result
+            })
+        else:
+            return jsonify(result), 400
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
 
 
 if __name__ == '__main__':
