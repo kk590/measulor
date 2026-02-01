@@ -1,6 +1,11 @@
 # Dockerfile for Flask API on Render
 FROM python:3.10-slim
 
+# Install system dependencies for OpenCV headless and other packages
+RUN apt-get update && apt-get install -y \
+    libsm6 libxext6 libxrender-dev llibsm6 libxext6 libxrender-dev libgomp1 libxcb1
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy requirements first for better caching
