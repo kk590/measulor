@@ -6,3 +6,7 @@ cryptography>=41.0.0
 flask-cors>=4.0.0
 opencv-python-headless>=4.13.0.90
 mediapipe>=0.10.0
+# 3D Reconstruction Libraries
+trimesh>=4.0.0
+scipy>=1.10.0
+numpy>=1.24.0
