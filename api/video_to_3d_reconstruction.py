@@ -1,4 +1,4 @@
-video_to_3d_reconstruction.py"""Video to 3D Reconstruction Module
+"""Video to 3D Reconstruction Module
 Converts video frames into 3D human body mesh using multi-view reconstruction
 """
 
