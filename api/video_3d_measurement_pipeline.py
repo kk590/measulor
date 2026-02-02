@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple
 
 # Import all required modules
 from .video_upload import validate_video
-from .frame_extractor import extract_frames_from_video
+from .frame_extractor import extract_frames
 from .video_to_3d_reconstruction import reconstruct_3d_from_video, VideoTo3DReconstructor
 from .mesh_3d_measurements import extract_measurements_from_mesh, Mesh3DMeasurementExtractor
 
