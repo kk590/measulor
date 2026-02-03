@@ -10,14 +10,15 @@ import open3d as o3d
 from scipy.spatial import Delaunay
 
 # Import MediaPipe for pose landmarks (used as 3D scaffold)
-import mediapipe as mp
-mp_pose = mp.solutions.pose
 
 class VideoTo3DReconstructor:
     """Reconstructs 3D human body mesh from video frames"""
     
     def __init__(self):
-        self.pose_detector = mp_pose.Pose(
+                # Lazy load mediapipe to avoid import issues
+        import mediapipe as mp
+        self.mp_pose = mp.solutions.pose
+        self.pose_detector = self.mp_posePose(
             static_image_mode=False,
             model_complexity=2,  # Use highest quality model
             min_detection_confidence=0.5,
