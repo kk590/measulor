@@ -226,11 +226,11 @@ PAYMENT_PAGE_HTML = """
                         id="license_key" 
                         required 
                         placeholder="XXXX-XXXX-XXXX-XXXX"
-                        maxlength="19"
+                        maxlength="39"
                         oninput="formatLicenseKey(this)"
                         autofocus
                     >
-                    <div class="help-text">Enter your 16-character license key</div>
+                    <div class="help-text">Enter your 39-character license key</div>
                 </div>
                 
                 <button type="submit" class="activate-btn" id="activate-btn">
@@ -244,7 +244,7 @@ PAYMENT_PAGE_HTML = """
     
     <script>
         function formatLicenseKey(input) {
-            let value = input.value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+            let value = input.value.replace(/[[A-Z0-9]{4}(-[A-Z0-9]{4}){7}$, '').toUpperCase();
             let formatted = '';
             
             for (let i = 0; i < value.length && i < 16; i++) {
