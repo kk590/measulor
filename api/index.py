@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from PIL import Image
 
 import requests
-from keygen_integration import verify_license_with_keygen
+from .keygen_integration import verify_license_with_keygen
 from .video_3d_measurement_pipeline import Video3DMeasurementPipeline
 
 app = Flask(__name__)
