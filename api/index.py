@@ -31,9 +31,9 @@ except:
 licenses = {}
 
 def generate_license_key():
-    raw_key = secrets.token_hex(16).upper()
+    raw_key = secrets.token_hex(32).upper()
     timestamp = datetime.now().isoformat()
-    signature = hmac.new(LICENSE_SECRET.encode(), f"{raw_key}:{timestamp}".encode(), hashlib.sha256).hexdigest()[:16]
+    signature = hmac.new(LICENSE_SECRET.encode(), f"{raw_key}:{timestamp}".encode(), hashlib.sha256).hexdigest()[:32]
     return f"{raw_key}-{signature}"
 
 
