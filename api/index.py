@@ -605,3 +605,4 @@ if __name__ == '__main__':
 
 if __name__ == '__main__':
     app.run()
+    # Deploy fix for license key validation
