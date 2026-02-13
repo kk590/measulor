@@ -24,7 +24,7 @@ cipher_suite = None
 try:
     ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', Fernet.generate_key().decode())
     cipher_suite = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
-except:
+except Exception as e:
     pass
 
 # In-memory license storage
@@ -603,6 +603,3 @@ def measure_video_3d():
 if __name__ == '__main__':
     app.run()
 
-if __name__ == '__main__':
-    app.run()
-    # Deploy fix for license key validation
