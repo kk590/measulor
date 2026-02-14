@@ -1,78 +1,101 @@
-"""
-Keygen.sh License Integration for Measulor
-This module provides license validation using Keygen API
-"""
+"""Keygen.sh license integration for Measulor."""
+
+from __future__ import annotations
+
+import logging
 import os
-import requests
 from datetime import datetime, timedelta
-import sys
+from typing import Dict, Tuple
+
+import requests
+
+LOGGER = logging.getLogger(__name__)
+
+KEYGEN_ACCOUNT_ID = os.getenv("KEYGEN_ACCOUNT_ID")
+KEYGEN_PRODUCT_ID = os.getenv("KEYGEN_PRODUCT_ID")
+KEYGEN_PRODUCT_TOKEN = os.getenv("KEYGEN_PRODUCT_TOKEN")
+KEYGEN_API_BASE = os.getenv("KEYGEN_API_URL", "https://api.keygen.sh/v1")
+KEYGEN_VALIDATE_TIMEOUT_SECONDS = float(os.getenv("KEYGEN_TIMEOUT_SECONDS", "10"))
+
+# 5 minute in-memory cache for license status.
+license_cache: Dict[str, Dict[str, object]] = {}
 
 
-# Keygen Configuration
-KEYGEN_ACCOUNT_ID = os.getenv('KEYGEN_ACCOUNT_ID', '51bb33ef-d469-4c06-ac4b-68b65ce1c647')
-KEYGEN_PRODUCT_ID = os.getenv('KEYGEN_PRODUCT_ID', '932d3cfd-d525-4c12-8f81-06a19f6fe088')
-KEYGEN_PRODUCT_TOKEN = os.getenv('KEYGEN_PRODUCT_TOKEN', 'prod-baddb474348d6ab89817af26148cf1468759')
-KEYGEN_API_URL = 'https://api.keygen.sh/v1/accounts/{}/licenses'.format(KEYGEN_ACCOUNT_ID)
+def get_missing_keygen_env_vars() -> list[str]:
+    """Return a list of missing required Keygen env vars."""
+    required = {
+        "KEYGEN_ACCOUNT_ID": KEYGEN_ACCOUNT_ID,
+        "KEYGEN_PRODUCT_ID": KEYGEN_PRODUCT_ID,
+        "KEYGEN_PRODUCT_TOKEN": KEYGEN_PRODUCT_TOKEN,
+    }
+    return [name for name, value in required.items() if not value]
 
-# License cache (in-memory)
-license_cache = {}
 
-def verify_license_with_keygen(license_key):
-    """
-    Verify license key with Keygen API
-    Returns: (is_valid, license_data)
-    """
-    try:
-        # Check cache first (5 minutes TTL)
-        if license_key in license_cache:
-            cached_data = license_cache[license_key]
-            cache_time = cached_data.get('cached_at', datetime.min)
-            if datetime.now() - cache_time < timedelta(minutes=5):
-                return cached_data.get('valid', False), cached_data.get('data', {})
-        
-        # Validate with Keygen API 
-        url = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key'
-        
-        headers = {
-            'Content-Type': 'application/vnd.api+json',
-            'Accept': 'application/vnd.api+json'
+def _build_headers() -> Dict[str, str]:
+    return {
+        "Content-Type": "application/vnd.api+json",
+        "Accept": "application/vnd.api+json",
+        "Authorization": f"Bearer {KEYGEN_PRODUCT_TOKEN}",
+    }
+
+
+def verify_license_with_keygen(license_key: str) -> Tuple[bool, Dict[str, object]]:
+    """Validate a license key against Keygen."""
+    if not license_key:
+        return False, {"message": "License key is required"}
+
+    missing_vars = get_missing_keygen_env_vars()
+    if missing_vars:
+        LOGGER.error("Missing required Keygen env vars: %s", ", ".join(missing_vars))
+        return False, {"message": "Keygen credentials are not configured", "missing_vars": missing_vars}
+
+    if license_key in license_cache:
+        cached = license_cache[license_key]
+        cache_time = cached.get("cached_at", datetime.min)
+        if isinstance(cache_time, datetime) and datetime.now() - cache_time < timedelta(minutes=5):
+            LOGGER.debug("Returning cached Keygen result for key ending %s", license_key[-6:])
+            return bool(cached.get("valid", False)), dict(cached.get("data", {}))
+
+    url = f"{KEYGEN_API_BASE}/accounts/{KEYGEN_ACCOUNT_ID}/licenses/actions/validate-key"
+    payload = {
+        "meta": {
+            "key": license_key,
+            "scope": {"product": KEYGEN_PRODUCT_ID},
         }
-                
-        print(f'Validating license key: {license_key}')
-        sys.stdout.flush()
-        
-        response = requests.post(url, headers=headers, json={
-            'meta': {
-                'key': license_key,
-                'scope': {
-                    'product': KEYGEN_PRODUCT_ID
-                }
-            }
-        })
-        
-        print(f'Keygen API Response Status: {response.status_code}')
-        sys.stdout.flush()
-        print(f'Keygen API Response Body: {response.text}')
-        sys.stdout.flush()
-        
+    }
+
+    try:
+        LOGGER.info("Validating Keygen license key ending with %s", license_key[-6:])
+        response = requests.post(
+            url,
+            headers=_build_headers(),
+            json=payload,
+            timeout=KEYGEN_VALIDATE_TIMEOUT_SECONDS,
+        )
+
+        body = response.json() if response.content else {}
         if response.status_code == 200:
-            data = response.json()
-            is_valid = data.get('meta', {}).get('valid', False)
-            
-            # Cache the result
+            is_valid = bool(body.get("meta", {}).get("valid", False))
             license_cache[license_key] = {
-                'valid': is_valid,
-                'data': data,
-                'cached_at': datetime.now()
+                "valid": is_valid,
+                "data": body,
+                "cached_at": datetime.now(),
             }
-            
-            return is_valid, data
-        else:
-            print(f'Keygen validation failed with status {response.status_code}: {response.text}')
-            sys.stdout.flush()
-            return False, {}
-            
-    except Exception as e:
-        print(f'Error validating license: {str(e)}')
-        sys.stdout.flush()
-        return False, {}
+            return is_valid, body
+
+        LOGGER.error(
+            "Keygen validation failed: status=%s body=%s",
+            response.status_code,
+            body,
+        )
+        return False, {
+            "message": "Keygen validation request failed",
+            "status_code": response.status_code,
+            "response": body,
+        }
+    except requests.RequestException:
+        LOGGER.exception("Network error while validating license with Keygen")
+        return False, {"message": "Network error while contacting Keygen"}
+    except ValueError:
+        LOGGER.exception("Unexpected non-JSON response received from Keygen")
+        return False, {"message": "Invalid response from Keygen"}

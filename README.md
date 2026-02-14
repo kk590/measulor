@@ -21,8 +21,28 @@ Measulor is a Python-based application that uses Computer Vision (OpenCV, MediaP
    ```bash
    pip install -r requirements-desktop.txt
    ```
-   
+
    **Important:** Use `requirements-desktop.txt` for local development. This includes `opencv-python` (with camera support) instead of `opencv-python-headless`.
+
+## Environment Variables
+
+The API now validates required environment variables at startup. Missing required values will stop the app from booting.
+
+### Required
+- `LICENSE_SECRET`: HMAC secret used to sign locally generated license keys.
+- `ENCRYPTION_KEY`: Fernet key used for crypto operations.
+- `KEYGEN_ACCOUNT_ID`: Keygen account UUID.
+- `KEYGEN_PRODUCT_ID`: Keygen product UUID.
+- `KEYGEN_PRODUCT_TOKEN`: Keygen product token used for license validation API calls.
+
+### Optional
+- `KEYGEN_API_URL` (default: `https://api.keygen.sh/v1`)
+- `KEYGEN_TIMEOUT_SECONDS` (default: `10`)
+- `ENFORCE_HTTPS` (default: `true`)
+- `LOG_LEVEL` (default: `INFO`)
+- `ENABLE_FILE_LOGGING` (default: `false`)
+
+Use `.env.example` as your template.
 
 ## Usage
 
@@ -43,6 +63,17 @@ Measulor is a Python-based application that uses Computer Vision (OpenCV, MediaP
    - Stand in a T-pose or A-pose.
    - Measurements will appear on the sidebar.
 
+## API Smoke Testing with curl
+
+Start the API and verify endpoints:
+
+```bash
+curl -s http://127.0.0.1:5000/api/health
+curl -s -X POST http://127.0.0.1:5000/api/check-license \
+  -H 'Content-Type: application/json' \
+  -d '{"license_key":"DEMO-INVALID-KEY"}'
+```
+
 ## Requirements
 
 - **Python 3.8-3.11** (Python 3.13 not supported yet)
@@ -56,7 +87,7 @@ If you see `AttributeError: _ARRAY_API not found` or `numpy.core.multiarray fail
 
 1. **Install Python 3.10:**
    - Download from: https://www.python.org/downloads/release/python-31011/
-   
+
 2. **Run with Python 3.10:**
    ```bash
    py -3.10 -m pip install -r requirements-desktop.txt

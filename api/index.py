@@ -1,21 +1,101 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect, g
 import base64
 import io
 import os
 import random
 import time
+from time import perf_counter
 import hashlib
 import hmac
 import secrets
+import logging
+from logging.handlers import RotatingFileHandler
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from PIL import Image
 
 import requests
-from .keygen_integration import verify_license_with_keygen
+from .keygen_integration import verify_license_with_keygen, get_missing_keygen_env_vars
 from .video_3d_measurement_pipeline import Video3DMeasurementPipeline
 
 app = Flask(__name__)
+
+
+def configure_logging():
+    """Configure application logging for production troubleshooting."""
+    log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+    formatter = logging.Formatter(
+        '%(asctime)s %(levelname)s [%(name)s] %(message)s'
+    )
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.handlers = []
+    root_logger.addHandler(stream_handler)
+    root_logger.setLevel(log_level)
+
+    if os.getenv('ENABLE_FILE_LOGGING', 'false').lower() == 'true':
+        file_handler = RotatingFileHandler('measulor.log', maxBytes=2_000_000, backupCount=3)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+
+configure_logging()
+logger = logging.getLogger(__name__)
+
+
+def _https_enforced() -> bool:
+    return os.getenv('ENFORCE_HTTPS', 'true').lower() == 'true'
+
+
+@app.before_request
+def enforce_https_and_start_timer():
+    g.request_start = perf_counter()
+
+    if not _https_enforced() or app.testing:
+        return None
+
+    if request.path.startswith('/health') or request.path.startswith('/api/health'):
+        return None
+
+    forwarded_proto = request.headers.get('X-Forwarded-Proto', '')
+    if request.is_secure or forwarded_proto == 'https':
+        return None
+
+    secure_url = request.url.replace('http://', 'https://', 1)
+    logger.info('Redirecting insecure request to HTTPS for path %s', request.path)
+    return redirect(secure_url, code=301)
+
+
+@app.after_request
+def log_request_metrics(response):
+    start = getattr(g, 'request_start', None)
+    duration_ms = (perf_counter() - start) * 1000 if start is not None else 0
+    response.headers['X-Response-Time-ms'] = f"{duration_ms:.2f}"
+    logger.info('%s %s -> %s in %.2fms', request.method, request.path, response.status_code, duration_ms)
+    return response
+
+
+def validate_environment_or_fail():
+    """Validate required startup environment variables."""
+    required = {
+        'LICENSE_SECRET': os.getenv('LICENSE_SECRET'),
+        'ENCRYPTION_KEY': os.getenv('ENCRYPTION_KEY'),
+    }
+
+    for keygen_var in get_missing_keygen_env_vars():
+        required[keygen_var] = None
+
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise RuntimeError(
+            f"Missing required environment variables: {', '.join(sorted(set(missing)))}"
+        )
+
+
+validate_environment_or_fail()
 
 
 # License key system with cryptography
@@ -41,9 +121,11 @@ def verify_license(license_key):
     # Use Keygen integration for license validation
     try:
         is_valid, license_data = verify_license_with_keygen(license_key)
+        if not is_valid:
+            logger.warning('License validation failed for key ending %s: %s', (license_key or '')[-6:], license_data)
         return is_valid
-    except Exception as e:
-        print(f'Error verifying license with Keygen: {str(e)}')
+    except Exception:
+        logger.exception('Error verifying license with Keygen')
         return False
 
 
@@ -217,7 +299,7 @@ def index():
             }
             
             // Validate format
-            if (!/^[A-Za-z0-9]+-[A-Za-z0-9]+$/.test(licenseKey)) {
+            if (!/^[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]{4,})+$/.test(licenseKey)) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
@@ -337,6 +419,19 @@ def index():
             }
         }
 
+        // Clear status on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusDiv = document.getElementById('licenseStatus');
+            const measureStatus = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.textContent = '';
+                statusDiv.style.display = 'none';
+            }
+            if (measureStatus) {
+                measureStatus.textContent = '';
+            }
+        });
+
         // Add enter key support for license input
         document.getElementById('licenseKey').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -351,7 +446,7 @@ def index():
 @app.route('/api/process', methods=['POST'])
 def process_image():
     try:
-        data = request.json
+        data = request.json or {}
         image_data = data.get('image', '')
         if not image_data:
             return jsonify({'success': False, 'message': 'No image provided'})
@@ -386,8 +481,9 @@ def process_image():
             measurements = generate_demo_measurements(width, height)
             message = 'Demo measurements generated'       
         return jsonify({'success': True, 'measurements': measurements, 'message': message})
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    except Exception:
+        logger.exception('Unhandled exception in /api/process')
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
 
 @app.route('/api/get-license')
 def get_license():
@@ -405,7 +501,7 @@ def get_license():
 
 @app.route('/api/check-license', methods=['POST'])
 def check_license():
-    data = request.json
+    data = request.json or {}
     license_key = data.get('license_key', '')
     is_valid = verify_license(license_key)
     if is_valid:
@@ -424,7 +520,14 @@ def check_license():
 
 @app.route('/api/health')
 def health():
-    return jsonify({'status': 'ok', 'message': 'Measulor API running', 'mode': 'demo'})
+    missing_env = get_missing_keygen_env_vars()
+    return jsonify({
+        'status': 'ok',
+        'message': 'Measulor API running',
+        'mode': 'demo',
+        'keygen_configured': len(missing_env) == 0,
+        'missing_keygen_env_vars': missing_env,
+    })
 
 # Key Generation Integration - Bulk License Key Generation
 @app.route('/api/keygen/generate', methods=['POST'])
@@ -459,8 +562,9 @@ def keygen_generate():
             'product': product,
             'expiry_days': expiry_days
         }), 201
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception:
+        logger.exception('Unhandled exception in /api/keygen/generate')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/api/keygen/activate', methods=['POST'])
 def keygen_activate():
@@ -491,8 +595,9 @@ def keygen_activate():
             'license_key': license_key,
             'email': email
         }), 200
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception:
+        logger.exception('Unhandled exception in /api/keygen/activate')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/api/keygen/validate/<license_key>', methods=['GET'])
 def keygen_validate(license_key):
@@ -518,8 +623,9 @@ def keygen_validate(license_key):
             'expiry_date': expiry_date.isoformat(),
             'expired': is_expired
         }), 200
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception:
+        logger.exception('Unhandled exception in /api/keygen/validate')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/api/keygen/stats', methods=['GET'])
 def keygen_stats():
@@ -538,8 +644,9 @@ def keygen_stats():
             'expired_keys': expired,
             'active_keys': total_keys - expired
         }), 200
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception:
+        logger.exception('Unhandled exception in /api/keygen/stats')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/api/measure-video-3d', methods=['POST'])
 def measure_video_3d():
@@ -594,12 +701,13 @@ def measure_video_3d():
         else:
             return jsonify(result), 400
     
-    except Exception as e:
+    except Exception:
+        logger.exception('Unhandled exception in /api/measure-video-3d')
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Internal server error'
         }), 500
 
 if __name__ == '__main__':
-    app.run()
-
+    port = int(os.getenv('PORT', '5000'))
+    app.run(host='0.0.0.0', port=port, debug=False)
