@@ -19,6 +19,7 @@ from .keygen_integration import verify_license_with_keygen, get_missing_keygen_e
 from .video_3d_measurement_pipeline import Video3DMeasurementPipeline
 
 app = Flask(__name__)
+app.config.update(ENV='production', DEBUG=False)
 
 
 def configure_logging():
@@ -79,7 +80,7 @@ def log_request_metrics(response):
 
 
 def validate_environment_or_fail():
-    """Validate required startup environment variables."""
+    """Validate required startup environment variables and production flags."""
     required = {
         'LICENSE_SECRET': os.getenv('LICENSE_SECRET'),
         'ENCRYPTION_KEY': os.getenv('ENCRYPTION_KEY'),
@@ -93,6 +94,10 @@ def validate_environment_or_fail():
         raise RuntimeError(
             f"Missing required environment variables: {', '.join(sorted(set(missing)))}"
         )
+
+    flask_debug = os.getenv('FLASK_DEBUG', 'false').lower()
+    if flask_debug in {'1', 'true', 'yes'}:
+        raise RuntimeError('FLASK_DEBUG must be false in production deployments')
 
 
 validate_environment_or_fail()
@@ -299,7 +304,7 @@ def index():
             }
             
             // Validate format
-            if (!/^[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]{4,})+$/.test(licenseKey)) {
+            if (!/^[A-Za-z0-9]{4}(?:-[A-Za-z0-9]{4}){7}$/.test(licenseKey)) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
@@ -419,16 +424,13 @@ def index():
             }
         }
 
-        // Clear status on page load
+        // Clear stale license status on page load
         document.addEventListener('DOMContentLoaded', () => {
             const statusDiv = document.getElementById('licenseStatus');
-            const measureStatus = document.getElementById('status');
             if (statusDiv) {
                 statusDiv.textContent = '';
+                statusDiv.className = 'status-message';
                 statusDiv.style.display = 'none';
-            }
-            if (measureStatus) {
-                measureStatus.textContent = '';
             }
         });
 
