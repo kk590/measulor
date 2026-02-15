@@ -130,7 +130,7 @@ def index():
             
             <div class="input-group">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600;">Enter Your License Key</label>
-                <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="39">
+                <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="128">
             </div>
             
             <button class="btn-activate" onclick="verifyLicense()">
@@ -207,7 +207,8 @@ def index():
 
         // License verification function
         async function verifyLicense() {
-            const licenseKey = document.getElementById('licenseKey').value.trim();
+            const rawLicenseKey = document.getElementById('licenseKey').value;
+            const licenseKey = rawLicenseKey.replace(/\s+/g, '').trim();
             const statusDiv = document.getElementById('licenseStatus');
             const loadingSpinner = document.getElementById('loadingSpinner');
             
@@ -216,8 +217,8 @@ def index():
                 return;
             }
             
-            // Validate format
-            if (!/^[A-Za-z0-9]+-[A-Za-z0-9]+$/.test(licenseKey)) {
+            // Keep client-side check permissive and let server decide validity
+            if (!/^[A-Za-z0-9-]{8,128}$/.test(licenseKey) || licenseKey.startsWith('-') || licenseKey.endsWith('-') || licenseKey.includes('--')) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
@@ -602,4 +603,3 @@ def measure_video_3d():
 
 if __name__ == '__main__':
     app.run()
-
