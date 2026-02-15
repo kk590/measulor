@@ -130,7 +130,7 @@ def index():
             
             <div class="input-group">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600;">Enter Your License Key</label>
-                <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="39">
+                <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="128">
             </div>
             
             <button class="btn-activate" onclick="verifyLicense()">

@@ -20,14 +20,14 @@ orders_db = {}
 licenses_db = {}
 
 def generate_license_key():
-        """Generate cryptographically secure license key with encryption"""
+    """Generate cryptographically secure license key with encryption"""
     raw_key = secrets.token_hex(16).upper()
     # Add timestamp and hash for extra security
     timestamp = datetime.now().isoformat()
     data = f"{raw_key}:{timestamp}"
     encrypted = cipher.encrypt(data.encode()).decode()
     return encrypted[:32]  # Return first 32 chars of encrypted key
-    return secrets.token_hex(16).upper()
+
 
 # Payment Page HTML with GPay Integration
 PAYMENT_PAGE_HTML = """
@@ -225,12 +225,12 @@ PAYMENT_PAGE_HTML = """
                         type="text" 
                         id="license_key" 
                         required 
-                        placeholder="XXXX-XXXX-XXXX-XXXX"
-                        maxlength="39"
+                        placeholder="Enter your license key"
+                        maxlength="128"
                         oninput="formatLicenseKey(this)"
                         autofocus
                     >
-                    <div class="help-text">Enter your 39-character license key</div>
+                    <div class="help-text">Paste your full license key as provided in your email</div>
                 </div>
                 
                 <button type="submit" class="activate-btn" id="activate-btn">
@@ -244,17 +244,8 @@ PAYMENT_PAGE_HTML = """
     
     <script>
         function formatLicenseKey(input) {
-            let value = input.value.replace(/[[A-Z0-9]{4}(-[A-Z0-9]{4}){7}$, '').toUpperCase();
-            let formatted = '';
-            
-            for (let i = 0; i < value.length && i < 16; i++) {
-                if (i > 0 && i % 4 === 0) {
-                    formatted += '-';
-                }
-                formatted += value[i];
-            }
-            
-            input.value = formatted;
+            // Keep user-provided grouping, only normalize whitespace.
+            input.value = input.value.replace(/\s+/g, '').trim();
         }
         
         function showStatus(message, isSuccess) {
@@ -276,9 +267,9 @@ PAYMENT_PAGE_HTML = """
             const licenseKey = document.getElementById('license_key').value;
             const submitBtn = document.getElementById('activate-btn');
             
-            // Validate license key format
-            if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(licenseKey)) {
-                showStatus('Invalid license key format. Please use format: XXXX-XXXX-XXXX-XXXX', false);
+            // Keep client-side check permissive; server-side validation is authoritative.
+            if (!/^[A-Za-z0-9-]{8,128}$/.test(licenseKey) || licenseKey.startsWith('-') || licenseKey.endsWith('-') || licenseKey.includes('--')) {
+                showStatus('Invalid license key format', false);
                 return;
             }
             
@@ -345,6 +336,12 @@ PAYMENT_PAGE_HTML = """
 """
 
 
+payment_bp = Blueprint('payment', __name__)
+
+
+@payment_bp.route('/')
+def payment_portal():
+    return render_template_string(PAYMENT_PAGE_HTML)
 
 
 def decrypt_data(encrypted_data: str) -> str:
@@ -362,19 +359,6 @@ def verify_hmac_signature(data: str, signature: str) -> bool:
     """Verify HMAC signature"""
     expected_signature = generate_hmac_signature(data)
     return hmac.compare_digest(expected_signature, signature)
-    licenses_db[license_key] = {
-        'email': email,
-        'order_id': order_id,
-        'activated': False,
-        'created_at': datetime.now().isoformat()
-    }
-    
-    return jsonify({
-        'success': True,
-        'license_key': license_key,
-        'order_id': order_id,
-        'message': 'Payment submitted for verification. Your license key has been generated!'
-    })
 
 @payment_bp.route('/check-license/<license_key>')
 def check_license(license_key):
