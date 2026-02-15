@@ -207,7 +207,8 @@ def index():
 
         // License verification function
         async function verifyLicense() {
-            const licenseKey = document.getElementById('licenseKey').value.trim();
+            const rawLicenseKey = document.getElementById('licenseKey').value;
+            const licenseKey = rawLicenseKey.replace(/\s+/g, '').trim();
             const statusDiv = document.getElementById('licenseStatus');
             const loadingSpinner = document.getElementById('loadingSpinner');
             
@@ -216,8 +217,8 @@ def index():
                 return;
             }
             
-            // Validate Keygen format: 8 groups of 4 alphanumeric chars
-            if (!/^[A-Za-z0-9]{4}(?:-[A-Za-z0-9]{4}){7}$/.test(licenseKey)) {
+            // Keep client-side check permissive and let server decide validity
+            if (!/^[A-Za-z0-9-]{8,128}$/.test(licenseKey) || licenseKey.startsWith('-') || licenseKey.endsWith('-') || licenseKey.includes('--')) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
