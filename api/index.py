@@ -216,8 +216,8 @@ def index():
                 return;
             }
             
-            // Validate format
-            if (!/^[A-Za-z0-9]+-[A-Za-z0-9]+$/.test(licenseKey)) {
+            // Validate Keygen format: 8 groups of 4 alphanumeric chars
+            if (!/^[A-Za-z0-9]{4}(?:-[A-Za-z0-9]{4}){7}$/.test(licenseKey)) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
@@ -602,4 +602,3 @@ def measure_video_3d():
 
 if __name__ == '__main__':
     app.run()
-
