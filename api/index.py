@@ -217,7 +217,7 @@ def index():
             }
             
             // Validate format
-            if (!/^[A-Za-z0-9]+-[A-Za-z0-9]+$/.test(licenseKey)) {
+            if (!/^[A[A-Za-z0-9]{4}(-[A-Za-z0-9]{4}){7}$/.test(licenseKey)) { {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
