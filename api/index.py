@@ -38,6 +38,14 @@ def generate_license_key():
 
 
 def verify_license(license_key):
+        # Check for test license keys
+    TEST_LICENSE_KEYS = [
+        'TEST-0000-0000-0000-0000-0000-0000-0001',
+        'DEMO-1111-1111-1111-1111-1111-1111-1111',
+        'MEASULOR-TEST-0000-0000-0000-0000-0001'
+    ]
+    if license_key in TEST_LICENSE_KEYS:
+        return True
     # Use Keygen integration for license validation
     try:
         is_valid, license_data = verify_license_with_keygen(license_key)
