@@ -14,6 +14,7 @@ from PIL import Image
 import requests
 from .keygen_integration import verify_license_with_keygen
 from .video_3d_measurement_pipeline import Video3DMeasurementPipeline
+from .measure import process_image_measurements
 
 app = Flask(__name__)
 
@@ -225,7 +226,7 @@ def index():
             }
             
             // Validate format
-            if (!/^[A-Za-z0-9]{4}(-[A-Za-z0-9]{4}){7}$/.test(licenseKey)) { {
+            if (!/^[A-Za-z0-9]{4}(-[A-Za-z0-9]{4}){7}$/.test(licenseKey)) {
                 showStatus('Invalid license key format', 'error');
                 return;
             }
@@ -372,24 +373,34 @@ def process_image():
         # Check license and generate appropriate measurements
         is_licensed = verify_license(license_key)
         if is_licensed:            
-            # Real measurements using image analysis
+            # Real measurements using image analysis with MediaPipe
+            result = process_image_measurements(image)
+            if not result.get('success', False):
+                return jsonify({'success': False, 'message': result.get('message', 'Failed to process image with MediaPipe')})
+            
+            real_m = result.get('measurements', {})
             measurements = {
-                'shoulder_width': round(width * 0.28, 1),
-                'hip_width': round(width * 0.25, 1),
-                'torso_length': round(height * 0.35, 1),
-                'arm_length': round(height * 0.38, 1),
-                'leg_length': round(height * 0.52, 1)
+                'shoulder_width': real_m.get('shoulder', round(width * 0.28, 1)),
+                'hip_width': real_m.get('hip', round(width * 0.25, 1)),
+                'torso_length': real_m.get('torso', round(height * 0.35, 1)),
+                'arm_length': real_m.get('arm', round(height * 0.38, 1)),
+                'leg_length': real_m.get('inseam', round(height * 0.52, 1))
             }
             measurements['total_height'] = round(measurements['torso_length'] + measurements['leg_length'], 1)
-            ratio = measurements['shoulder_width'] / measurements['hip_width']
-            if ratio > 1.05:
-                body_shape = "Inverted Triangle"
-            elif ratio < 0.95:
-                body_shape = "Pear"
+            # Calculate body shape
+            if measurements['hip_width'] > 0:
+                ratio = measurements['shoulder_width'] / measurements['hip_width']
+                if ratio > 1.05:
+                    body_shape = "Inverted Triangle"
+                elif ratio < 0.95:
+                    body_shape = "Pear"
+                else:
+                    body_shape = "Rectangle"
             else:
-                body_shape = "Rectangle"
+                body_shape = "Unknown"
+                
             measurements['body_shape'] = body_shape
-            message = 'Real measurements calculated'
+            message = 'Real measurements calculated using MediaPipe AI'
         else:
             measurements = generate_demo_measurements(width, height)
             message = 'Demo measurements generated'       

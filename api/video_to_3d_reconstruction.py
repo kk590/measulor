@@ -18,7 +18,7 @@ class VideoTo3DReconstructor:
                 # Lazy load mediapipe to avoid import issues
         import mediapipe as mp
         self.mp_pose = mp.solutions.pose
-        self.pose_detector = self.mp_posePose(
+        self.pose_detector = self.mp_pose.Pose(
             static_image_mode=False,
             model_complexity=2,  # Use highest quality model
             min_detection_confidence=0.5,

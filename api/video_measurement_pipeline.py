@@ -8,7 +8,7 @@ import tempfile
 
 # Import all tools
 from .video_upload import save_uploaded_video, validate_video
-from .frame_extractor import extract_frames_from_video
+from .frame_extractor import extract_frames
 from .pose_detector import detect_poses_in_frames
 from .pose_quality_validator import validate_poses_batch, filter_valid_poses
 from .body_measurement_calculator import calculate_measurements_from_poses
@@ -64,7 +64,7 @@ class VideoMeasurementPipeline:
             # Step 2: Extract frames
             print(f"\nStep 2/7: Extracting frames (max {max_frames})...")
             success, result = safe_execute(
-                extract_frames_from_video,
+                extract_frames,
                 ErrorCategory.FRAME_EXTRACTION,
                 video_path,
                 max_frames

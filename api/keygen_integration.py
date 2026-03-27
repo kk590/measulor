@@ -22,10 +22,10 @@ KEYGEN_PRODUCT_TOKEN = os.getenv('KEYGEN_PRODUCT_TOKEN')
 
 # Validate required environment variables
 required_vars = ['KEYGEN_ACCOUNT_ID', 'KEYGEN_PRODUCT_ID', 'KEYGEN_PRODUCT_TOKEN']
-for var in required_vars:
-    if not os.getenv(var):
-        logger.error(f"Missing required environment variable: {var}")
-        raise EnvironmentError(f"Missing required environment variable: {var}")
+_missing_vars = [var for var in required_vars if not os.getenv(var)]
+if _missing_vars:
+    logger.warning(f"Missing Keygen environment variables: {', '.join(_missing_vars)}. "
+                   "License validation via Keygen API will not work until these are set.")
 
 KEYGEN_API_URL = f'https://api.keygen.sh/v1/accounts/{KEYGEN_ACCOUNT_ID}/licenses'
 

@@ -19,15 +19,17 @@ cipher = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else 
 orders_db = {}
 licenses_db = {}
 
+# Blueprint for payment routes
+payment_bp = Blueprint('payment', __name__)
+
 def generate_license_key():
-        """Generate cryptographically secure license key with encryption"""
+    """Generate cryptographically secure license key with encryption"""
     raw_key = secrets.token_hex(16).upper()
     # Add timestamp and hash for extra security
     timestamp = datetime.now().isoformat()
     data = f"{raw_key}:{timestamp}"
     encrypted = cipher.encrypt(data.encode()).decode()
     return encrypted[:32]  # Return first 32 chars of encrypted key
-    return secrets.token_hex(16).upper()
 
 # Payment Page HTML with GPay Integration
 PAYMENT_PAGE_HTML = """
@@ -244,10 +246,10 @@ PAYMENT_PAGE_HTML = """
     
     <script>
         function formatLicenseKey(input) {
-            let value = input.value.replace(/[[A-Z0-9]{4}(-[A-Z0-9]{4}){7}$, '').toUpperCase();
+            let value = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
             let formatted = '';
             
-            for (let i = 0; i < value.length && i < 16; i++) {
+            for (let i = 0; i < value.length && i < 32; i++) {
                 if (i > 0 && i % 4 === 0) {
                     formatted += '-';
                 }
@@ -277,7 +279,7 @@ PAYMENT_PAGE_HTML = """
             const submitBtn = document.getElementById('activate-btn');
             
             // Validate license key format
-            if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(licenseKey)) {
+            if (!/^[A-Z0-9]{4}(-[A-Z0-9]{4}){3,7}$/.test(licenseKey)) {
                 showStatus('Invalid license key format. Please use format: XXXX-XXXX-XXXX-XXXX', false);
                 return;
             }
@@ -345,8 +347,6 @@ PAYMENT_PAGE_HTML = """
 """
 
 
-
-
 def decrypt_data(encrypted_data: str) -> str:
     """Decrypt encrypted data"""
     try:
@@ -362,19 +362,7 @@ def verify_hmac_signature(data: str, signature: str) -> bool:
     """Verify HMAC signature"""
     expected_signature = generate_hmac_signature(data)
     return hmac.compare_digest(expected_signature, signature)
-    licenses_db[license_key] = {
-        'email': email,
-        'order_id': order_id,
-        'activated': False,
-        'created_at': datetime.now().isoformat()
-    }
-    
-    return jsonify({
-        'success': True,
-        'license_key': license_key,
-        'order_id': order_id,
-        'message': 'Payment submitted for verification. Your license key has been generated!'
-    })
+
 
 @payment_bp.route('/check-license/<license_key>')
 def check_license(license_key):

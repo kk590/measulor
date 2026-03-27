@@ -52,7 +52,7 @@ class Video3DMeasurementPipeline:
             
             # Step 2: Extract frames
             print(f"\n[2/5] Extracting frames (max {max_frames})...")
-            success, frames = extract_frames_from_video(video_path, max_frames)
+            success, frames = extract_frames(video_path, max_frames)
             if not success:
                 return False, f"Frame extraction failed: {frames}"
             
