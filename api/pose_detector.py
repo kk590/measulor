@@ -2,26 +2,30 @@
 Detects human pose landmarks in video frames using MediaPipe
 """
 
-import mediapipe as mp
 import cv2
 import numpy as np
 from typing import List, Dict, Optional, Tuple
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions, RunningMode
+import mediapipe as mp
 
-# Initialize MediaPipe Pose
-mp_pose = mp.solutions.pose
-mp_drawing = mp.solutions.drawing_utils
-
-# Pose detection configuration
-MIN_DETECTION_CONFIDENCE = 0.5
-MIN_TRACKING_CONFIDENCE = 0.5
+# Initialize MediaPipe Pose Landmarker
+base_options = BaseOptions(model_asset_path='models/pose_landmarker_full.task')
+options = PoseLandmarkerOptions(
+    base_options=base_options,
+    running_mode=RunningMode.VIDEO,
+    min_pose_detection_confidence=0.5,
+    min_pose_presence_confidence=0.5
+)
+pose_landmarker = PoseLandmarker.create_from_options(options)
 
 class PoseDetector:
     """Wrapper class for MediaPipe Pose detection"""
     
     def __init__(self, 
                  static_image_mode=False,
-                 min_detection_confidence=MIN_DETECTION_CONFIDENCE,
-                 min_tracking_confidence=MIN_TRACKING_CONFIDENCE):
+                 min_detection_confidence=0.5,
+                 min_tracking_confidence=0.5):
         """
         Initialize pose detector
         
@@ -30,11 +34,7 @@ class PoseDetector:
             min_detection_confidence: Minimum confidence for person detection
             min_tracking_confidence: Minimum confidence for landmark tracking
         """
-        self.pose = mp_pose.Pose(
-            static_image_mode=static_image_mode,
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence
-        )
+        self.pose = pose_landmarker
     
     def detect_pose(self, frame: np.ndarray) -> Tuple[bool, Optional[Dict]]:
         """
@@ -51,15 +51,16 @@ class PoseDetector:
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             height, width, _ = frame_rgb.shape
             
-            # Process frame
-            results = self.pose.process(frame_rgb)
+            # Process frame - convert to mp.Image
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+            results = self.pose.detect(mp_image)
             
             if not results.pose_landmarks:
                 return False, None
             
             # Extract landmarks
             landmarks = {}
-            for idx, landmark in enumerate(results.pose_landmarks.landmark):
+            for idx, landmark in enumerate(results.pose_landmarks[0]):
                 landmarks[idx] = {
                     'x': landmark.x * width,
                     'y': landmark.y * height,

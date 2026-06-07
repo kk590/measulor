@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cv2
-from mediapipe.tasks.python import vision
-from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions, RunningMode
 import numpy as np
 from PIL import Image
 import io
@@ -13,10 +13,10 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Initialize MediaPipe Pose Landmarker
-base_options = vision.BaseOptions(model_asset_path='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task')
+base_options = BaseOptions(model_asset_path='models/pose_landmarker_full.task')
 options = PoseLandmarkerOptions(
     base_options=base_options,
-    running_mode=vision.RunningMode.IMAGE,
+    running_mode=RunningMode.IMAGE,
     min_pose_detection_confidence=0.5,
     min_pose_presence_confidence=0.5
 )
