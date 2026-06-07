@@ -1,18 +1,26 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cv2
-import mediapipe as mp
+from mediapipe.tasks.python import vision
+from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions
 import numpy as np
 from PIL import Image
 import io
 import math
+import os
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Initialize MediaPipe Pose
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
+# Initialize MediaPipe Pose Landmarker
+base_options = vision.BaseOptions(model_asset_path='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task')
+options = PoseLandmarkerOptions(
+    base_options=base_options,
+    running_mode=vision.RunningMode.IMAGE,
+    min_pose_detection_confidence=0.5,
+    min_pose_presence_confidence=0.5
+)
+pose = PoseLandmarker.create_from_options(options)
 
 def calculate_distance(point1, point2):
     """Calculate Euclidean distance between two points"""
@@ -30,13 +38,14 @@ def estimate_pixels_per_cm(landmarks, image_height):
         ear = landmarks[7]
         head_width_px = calculate_distance(nose, ear)
         # Average head width is ~15cm
-            avg_head_width_cm = 18  # More accurate average head width
-                    pixels_per_cm_head = head_width_px / avg_head_width_cm
+        avg_head_width_cm = 18  # More accurate average head width
+        pixels_per_cm_head = head_width_px / avg_head_width_cm
     # Method 2: Use shoulder-to-hip ratio for better accuracy
     if 11 in landmarks and 23 in landmarks:
         shoulder_to_hip_px = calculate_distance(landmarks[11], landmarks[23])
         # Average torso length (shoulder to hip) is ~45cm
-        avg_torso_cm = 48  # More accurate shoulder-to-hip measurement        pixels_per_cm_torso = shoulder_to_hip_px / avg_torso_cm
+        avg_torso_cm = 48  # More accurate shoulder-to-hip measurement
+        pixels_per_cm_torso = shoulder_to_hip_px / avg_torso_cm
         
         # If both methods available, use average for better accuracy
         if 0 in landmarks and 7 in landmarks:
@@ -49,7 +58,8 @@ def estimate_pixels_per_cm(landmarks, image_height):
         ankle = landmarks[27]
         pixel_height = abs(nose[1] - ankle[1])
         # More realistic height range: 160-180cm average
-        assumed_height_cm = 170  # Updated average height for better accuracy        pixels_per_cm = pixel_height / assumed_height_cm
+        assumed_height_cm = 170  # Updated average height for better accuracy
+        pixels_per_cm = pixel_height / assumed_height_cm
         return pixels_per_cm
     
     return None

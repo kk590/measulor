@@ -1,4 +1,26 @@
-node_modules
-dist
+```gitignore
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dependencies
+.venv/
+venv/
 .env
-.DS_Store
+.env.local
+.env.*
+
+# Logs
+*.log
+
+# Editors
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+target/
+```
