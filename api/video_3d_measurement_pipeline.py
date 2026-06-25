@@ -64,8 +64,7 @@ class Video3DMeasurementPipeline:
             if not success:
                 return False, f"3D reconstruction failed: {reconstruction_result}"
             
-            mesh = reconstruction_result['mesh']
-            landmarks_3d = reconstruction_result['landmarks_3d']
+            ply_path = reconstruction_result['ply_path']
             mesh_info = reconstruction_result['mesh_info']
             
             print(f"  ✓ 3D model created: {mesh_info['num_vertices']} vertices")
@@ -75,8 +74,7 @@ class Video3DMeasurementPipeline:
             # Step 4: Extract measurements from 3D mesh
             print("\n[4/5] Extracting body measurements from 3D model...")
             success, measurements = extract_measurements_from_mesh(
-                mesh, 
-                landmarks_3d,
+                ply_path, 
                 self.reference_height_cm
             )
             if not success:

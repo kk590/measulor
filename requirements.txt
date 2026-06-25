@@ -1,13 +1,10 @@
-Flask==2.3.0
-Pillow==10.1.0
-requests==2.31.0
-gunicorn~=21.2.0
-cryptography>=41.0.0
-flask-cors>=4.0.0
-opencv-python-headless>=4.13.0.90
-mediapipe>=0.10.0
+Flask
+Pillow
+requests
+flask-cors
+opencv-python-headless
 # 3D Reconstruction Libraries
-trimesh>=4.0.0
-scipy>=1.10.0
-numpy>=1.24.0
-open3d>=0.18.0
+pycolmap
+scipy
+numpy
+open3d
