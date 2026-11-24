@@ -8,7 +8,7 @@ that cannot be measured reliably fall back to anthropometric ratios and are flag
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 from scipy.spatial import cKDTree
@@ -21,6 +21,7 @@ MIN_SLICE_POINTS = 12
 ANGULAR_BINS = 36
 MIN_FILLED_BINS = 12
 SMOOTHING_BINS = 5
+LEG_GAP_FRACTION = 0.08
 SLICE_HALF_THICKNESS = 0.015  # fraction of body height
 
 # Landmark heights as a fraction of stature, measured from the floor.
@@ -136,6 +137,36 @@ def _radial_profile(points_2d: np.ndarray) -> Optional[np.ndarray]:
     return center + np.stack([medians * np.cos(theta), medians * np.sin(theta)], axis=1)
 
 
+def _split_legs(points_2d: np.ndarray) -> Optional[List[np.ndarray]]:
+    """Split a thigh-level slice into left/right legs at the widest gap across the body axis."""
+    if len(points_2d) < 2 * MIN_SLICE_POINTS:
+        return None
+    centered = points_2d - points_2d.mean(axis=0)
+    _, _, vt = np.linalg.svd(centered, full_matrices=False)
+    projected = centered @ vt[0]
+    order = np.sort(projected)
+    lo, hi = np.percentile(projected, [5, 95])
+    middle = (order[:-1] >= lo + 0.2 * (hi - lo)) & (order[1:] <= hi - 0.2 * (hi - lo))
+    if not middle.any():
+        return None
+    gaps = np.diff(order)
+    gaps[~middle] = 0
+    split = int(np.argmax(gaps))
+    if gaps[split] < LEG_GAP_FRACTION * (hi - lo):
+        return None
+    cut = (order[split] + order[split + 1]) / 2
+    legs = [points_2d[projected < cut], points_2d[projected > cut]]
+    return legs if all(len(leg) >= MIN_SLICE_POINTS for leg in legs) else None
+
+
+def _thigh_perimeter(points_2d: np.ndarray) -> Optional[float]:
+    legs = _split_legs(points_2d)
+    if legs is None:
+        return None  # legs not separable; a combined outline would overstate one thigh
+    perimeters = [p for p in (_perimeter(leg) for leg in legs) if p is not None]
+    return float(np.mean(perimeters)) if perimeters else None
+
+
 def _perimeter(points_2d: np.ndarray) -> Optional[float]:
     ring = _radial_profile(points_2d)
     if ring is None:
@@ -198,9 +229,9 @@ def compute_measurements(
 
     results: Dict[str, Measurement] = {"height": Measurement(reference_height_cm, "reference")}
 
-    for name, fraction in (("chest", LEVELS["chest"]), ("waist", LEVELS["waist"]),
-                           ("hip", LEVELS["hip"]), ("thigh", LEVELS["thigh"])):
-        perimeter = _perimeter(slice_at(fraction))
+    for name, fraction, measure in (("chest", LEVELS["chest"], _perimeter), ("waist", LEVELS["waist"], _perimeter),
+                                    ("hip", LEVELS["hip"], _perimeter), ("thigh", LEVELS["thigh"], _thigh_perimeter)):
+        perimeter = measure(slice_at(fraction))
         if perimeter is not None:
             results[f"{name}_circumference"] = Measurement(perimeter, "measured")
 

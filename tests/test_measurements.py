@@ -60,3 +60,18 @@ def test_rejects_bad_input():
         compute_measurements(np.zeros((10, 3)), 170)
     with pytest.raises(MeasurementError):
         compute_measurements(np.random.rand(500, 3), 20)
+
+
+def test_thigh_measures_one_leg():
+    rng = np.random.default_rng(3)
+    n = 30000
+    y = rng.uniform(0, 170, n)
+    theta = rng.uniform(0, 2 * np.pi, n)
+    torso = np.stack([16 * np.cos(theta), -y, 11 * np.sin(theta)], axis=1)[y > 85]
+    legs_y = y[y <= 85]
+    t = theta[y <= 85]
+    side = np.where(rng.random(len(legs_y)) < 0.5, -9.0, 9.0)
+    legs = np.stack([side + 7 * np.cos(t), -legs_y, 7 * np.sin(t)], axis=1)
+    points = np.vstack([torso, legs]) * 0.01
+    result = compute_measurements(points, 170)
+    assert result["measurements"]["thigh_circumference"]["value_cm"] == pytest.approx(2 * math.pi * 7, rel=0.1)
