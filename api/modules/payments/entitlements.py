@@ -128,9 +128,8 @@ class EntitlementStore:
             conn.execute(update(purchases).where(purchases.c.transaction_id == transaction_id)
                          .values(status="paid"))
             if row.scans_granted:
-                balance = self.balance(row.customer_id, conn)
                 conn.execute(update(credits).where(credits.c.customer_id == row.customer_id)
-                             .values(balance=balance + row.scans_granted))
+                             .values(balance=credits.c.balance + row.scans_granted))
 
     def mark_event_processed(self, event_id: str, event_type: str) -> bool:
         """Return False if this webhook event was already handled."""
