@@ -155,8 +155,15 @@
 
   const JOB_KEY = "measulor.activeJob";
 
+  function remember(jobId) {
+    try {
+      if (jobId) localStorage.setItem(JOB_KEY, jobId);
+      else localStorage.removeItem(JOB_KEY);
+    } catch (_) { /* storage blocked: resume-on-reload is best effort */ }
+  }
+
   async function poll(jobId) {
-    localStorage.setItem(JOB_KEY, jobId);
+    remember(jobId);
     $("submit-btn").disabled = true;
     $("progress").hidden = false;
     const { ok, body } = await api(`/api/jobs/${jobId}`);
@@ -171,7 +178,7 @@
 
   function finish() {
     clearTimeout(pollTimer);
-    localStorage.removeItem(JOB_KEY);
+    remember(null);
     $("progress").hidden = true;
     $("submit-btn").disabled = false;
   }
@@ -204,6 +211,7 @@
   });
 
   initPayments().catch(() => showError("Could not load billing information"));
-  const activeJob = localStorage.getItem(JOB_KEY);
+  let activeJob = null;
+  try { activeJob = localStorage.getItem(JOB_KEY); } catch (_) { /* storage blocked */ }
   if (activeJob) poll(activeJob);
 })();
