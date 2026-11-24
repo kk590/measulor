@@ -71,10 +71,12 @@ def create_job():
 
     try:
         video_path = video.save_upload(upload, os.path.join(config.data_dir, "uploads"))
-    except video.VideoError as exc:
+    except Exception as exc:
         if charge == "credit":
             store.refund_credit(customer_id)
-        return jsonify({"success": False, "message": str(exc)}), 400
+        if isinstance(exc, video.VideoError):
+            return jsonify({"success": False, "message": str(exc)}), 400
+        raise
 
     job_id = job_service.create(_owner_id(), video_path, height, customer_id, charge)
     return jsonify({"success": True, "job_id": job_id, "entitlement": store.summary(customer_id)}), 202

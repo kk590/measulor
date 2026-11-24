@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import shutil
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +33,15 @@ class JobService:
         self.jobs_dir = os.path.join(config.data_dir, "jobs")
         os.makedirs(self.jobs_dir, exist_ok=True)
         self._recover_interrupted()
+        self._stop = threading.Event()
+        threading.Thread(target=self._cleanup_loop, name="artifact-cleanup", daemon=True).start()
+
+    def _cleanup_loop(self, interval_seconds: int = 3600) -> None:
+        while not self._stop.wait(interval_seconds):
+            try:
+                self.cleanup_expired()
+            except Exception:
+                logger.exception("Artifact cleanup failed")
 
     def job_dir(self, job_id: str) -> str:
         return os.path.join(self.jobs_dir, job_id)
@@ -117,4 +127,5 @@ class JobService:
             shutil.rmtree(self.job_dir(row.id), ignore_errors=True)
 
     def shutdown(self) -> None:
+        self._stop.set()
         self.executor.shutdown(wait=False, cancel_futures=True)
