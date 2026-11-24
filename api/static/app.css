@@ -1,0 +1,29 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f3f5f8; color: #1f2933; }
+.container { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+header { text-align: center; margin-bottom: 16px; }
+h1 { margin: 0; font-size: 2rem; }
+h2 { margin-top: 0; font-size: 1.15rem; }
+.tagline { color: #52606d; margin: 4px 0 16px; }
+.steps { display: flex; justify-content: center; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.steps li { padding: 6px 12px; border-radius: 999px; background: #e4e7eb; font-size: .9rem; }
+.steps li.active { background: #2f80ed; color: #fff; }
+.steps li.done { background: #27ae60; color: #fff; }
+.card { background: #fff; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+form label { display: block; margin: 12px 0; font-weight: 600; }
+input[type=number], input[type=text], input[type=file] { display: block; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #cbd2d9; border-radius: 8px; font: inherit; }
+.row input[type=text] { flex: 1; width: auto; margin: 0; }
+.btn { display: inline-block; background: #2f80ed; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-secondary { background: #e4e7eb; color: #1f2933; }
+.tips { color: #52606d; padding-left: 20px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e4e7eb; }
+.tag { font-size: .8rem; padding: 2px 8px; border-radius: 999px; background: #e4e7eb; }
+.tag.measured { background: #d5f5e3; }
+.tag.estimated { background: #fdebd0; }
+.muted { color: #7b8794; font-size: .9rem; }
+.error { background: #fdecea; color: #b42318; padding: 12px; border-radius: 8px; }
+.spinner { width: 32px; height: 32px; margin: 8px auto; border: 4px solid #e4e7eb; border-top-color: #2f80ed; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Measulor - 3D Body Measurements from Video</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Measulor</h1>
+      <p class="tagline">Video &rarr; 3D model &rarr; body measurements</p>
+      <ol class="steps" id="steps">
+        <li data-stage="video">Video</li>
+        <li data-stage="reconstruction">3D model</li>
+        <li data-stage="measurements">Measurements</li>
+      </ol>
+    </header>
+
+    <section class="card" id="billing" hidden>
+      <h2>Your plan</h2>
+      <p id="billing-status">Loading&hellip;</p>
+      <div class="row">
+        <button class="btn" id="buy-btn" type="button">Subscribe</button>
+        <button class="btn btn-secondary" id="portal-btn" type="button" hidden>Manage billing</button>
+      </div>
+      <details>
+        <summary>Already subscribed? Restore with the transaction ID (txn_...) from your Paddle receipt</summary>
+        <form id="restore-form" class="row">
+          <input type="text" id="restore-txn" placeholder="txn_..." pattern="txn_[a-z0-9]{26}" required>
+          <button class="btn btn-secondary" type="submit">Restore subscription</button>
+        </form>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>1. Record a video</h2>
+      <ul class="tips">
+        <li>Stand in an A-pose in tight clothing, in a well lit room with a textured background.</li>
+        <li>Have someone walk slowly in a full circle around you, keeping your whole body in frame.</li>
+        <li>10&ndash;60 seconds is ideal.</li>
+      </ul>
+      <form id="upload-form">
+        <label>Video file
+          <input type="file" id="video" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska" required>
+        </label>
+        <label>Your height (cm)
+          <input type="number" id="height" min="80" max="250" step="0.1" required placeholder="e.g. 172">
+        </label>
+        <button class="btn" type="submit" id="submit-btn">Process video</button>
+      </form>
+    </section>
+
+    <section class="card" id="progress" hidden>
+      <h2>2. Processing</h2>
+      <div class="spinner" id="spinner"></div>
+      <p id="status"></p>
+    </section>
+
+    <section class="card" id="results" hidden>
+      <h2>3. Measurements</h2>
+      <p id="confidence"></p>
+      <table>
+        <thead><tr><th>Measurement</th><th>Value</th><th>Method</th></tr></thead>
+        <tbody id="measurements"></tbody>
+      </table>
+      <p class="muted" id="model-stats"></p>
+      <a class="btn btn-secondary" id="download" hidden>Download 3D model (.ply)</a>
+    </section>
+
+    <p class="error" id="error" role="alert" hidden></p>
+  </main>
+</body>
+</html>

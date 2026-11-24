@@ -10,3 +10,5 @@ venv/
 .venv/
 *.egg
 *.whl
+data/
+.pytest_cache/
