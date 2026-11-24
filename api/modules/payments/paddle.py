@@ -42,6 +42,9 @@ class PaddleClient:
     def get_transaction(self, transaction_id: str) -> dict:
         return self._request("GET", f"/transactions/{transaction_id}")
 
+    def get_customer(self, customer_id: str) -> dict:
+        return self._request("GET", f"/customers/{customer_id}")
+
     def create_portal_session(self, customer_id: str, subscription_ids: Optional[list] = None) -> dict:
         body = {"subscription_ids": subscription_ids} if subscription_ids else {}
         return self._request("POST", f"/customers/{customer_id}/portal-sessions", json=body)

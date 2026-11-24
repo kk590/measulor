@@ -20,7 +20,7 @@ video ──► 3D model ──► measurements          payments (Paddle) gates
 Plan: **₹199/month subscription** with unlimited scans while it's active. Users cancel or update their card in the Paddle customer portal ("Manage billing").
 
 1. In Paddle, create a product with a **recurring monthly price of ₹199 (INR)**. Set its `pri_...` ID as `PADDLE_PRICE_ID`.
-2. Create an **API key** with `transaction.read` and `customer_portal_session.write` and set it as `PADDLE_API_KEY`.
+2. Create an **API key** with `transaction.read`, `customer.read` and `customer_portal_session.write` and set it as `PADDLE_API_KEY`.
 3. Choose a checkout:
    - **Checkout link:** set `PADDLE_CHECKOUT_URL` to your Paddle checkout link (for example `https://pay.paddle.io/checkout/hsc_...`), and set its redirect URL to `https://<your-domain>/`. The Subscribe button opens this link. If the return URL carries `transaction_id` (or `transactionId`), the app unlocks automatically. Otherwise the user pastes the `txn_...` ID from their receipt into "Restore subscription". Hosted checkout links need Paddle's approval on live accounts.
    - **Overlay checkout:** set `PADDLE_CLIENT_TOKEN` (a client-side token) and Paddle.js opens the checkout on the page.

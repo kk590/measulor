@@ -45,6 +45,7 @@ subscriptions = Table(
     Column("subscription_id", String(64), primary_key=True),
     Column("customer_id", String(64), nullable=False, index=True),
     Column("status", String(32), nullable=False),
+    Column("paddle_updated_at", String(40)),
     Column("updated_at", DateTime, nullable=False, default=utcnow, onupdate=utcnow),
 )
 

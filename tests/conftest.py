@@ -3,6 +3,7 @@ import hmac
 import io
 import json
 import time
+from datetime import datetime, timezone
 
 import pytest
 
@@ -16,6 +17,10 @@ PRICE_ID = "pri_01testpriceid000000000000"
 class FakePaddle:
     def __init__(self):
         self.transactions = {}
+        self.customers = {}
+
+    def get_customer(self, customer_id):
+        return self.customers.get(customer_id, {"id": customer_id, "email": "buyer@example.com"})
 
     def get_transaction(self, transaction_id):
         from api.modules.payments import PaddleError
@@ -91,9 +96,11 @@ def send_webhook(client, event_id, event_type, data):
 
 
 def transaction(txn_id, customer_id="ctm_01testcustomer00000000000", status="completed",
-                subscription_id=None, price_id=PRICE_ID):
-    return {"id": txn_id, "customer_id": customer_id, "status": status,
-            "subscription_id": subscription_id, "items": [{"price": {"id": price_id}, "quantity": 1}]}
+                subscription_id=None, price_id=PRICE_ID, billed_at=None, billing_cycle=None):
+    billed_at = billed_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return {"id": txn_id, "customer_id": customer_id, "status": status, "billed_at": billed_at,
+            "subscription_id": subscription_id,
+            "items": [{"price": {"id": price_id, "billing_cycle": billing_cycle}, "quantity": 1}]}
 
 
 def video_upload(name="clip.mp4"):

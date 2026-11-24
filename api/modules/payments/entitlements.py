@@ -5,6 +5,7 @@ grants unlimited scans while it stays active.
 """
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select, update
@@ -17,6 +18,16 @@ logger = logging.getLogger(__name__)
 
 PAID_TRANSACTION_STATUSES = {"paid", "completed"}
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
+REVOKING_ADJUSTMENTS = {"refund", "chargeback"}
+
+
+def _parse_time(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 class EntitlementStore:
@@ -25,13 +36,21 @@ class EntitlementStore:
         self.price_id = price_id
         self.scans_per_purchase = scans_per_purchase
 
-    def transaction_has_price(self, transaction: dict) -> bool:
+    def _matching_items(self, entity: dict) -> list:
+        items = entity.get("items") or []
         if not self.price_id:
-            return True
-        return any(
-            (item.get("price") or {}).get("id") == self.price_id or item.get("price_id") == self.price_id
-            for item in transaction.get("items") or []
-        )
+            return items
+        return [item for item in items
+                if (item.get("price") or {}).get("id") == self.price_id or item.get("price_id") == self.price_id]
+
+    def transaction_has_price(self, transaction: dict) -> bool:
+        return bool(self._matching_items(transaction))
+
+    def awaiting_subscription(self, transaction: dict) -> bool:
+        """A paid recurring checkout whose subscription Paddle hasn't created yet."""
+        if transaction.get("subscription_id"):
+            return False
+        return any((item.get("price") or {}).get("billing_cycle") for item in self._matching_items(transaction))
 
     def record_transaction(self, transaction: dict) -> Optional[str]:
         """Store a paid transaction idempotently. Returns the customer id if it grants access."""
@@ -43,6 +62,8 @@ class EntitlementStore:
         if not self.transaction_has_price(transaction):
             logger.warning("Transaction %s does not include the configured price", transaction_id)
             return None
+        if self.awaiting_subscription(transaction):
+            return None  # recorded once transaction.completed carries the subscription_id
 
         subscription_id = transaction.get("subscription_id")
         scans = 0 if subscription_id else self.scans_per_purchase
@@ -60,17 +81,28 @@ class EntitlementStore:
             pass  # already recorded (checkout claim and webhook can race)
         return customer_id
 
-    def record_subscription(self, subscription: dict) -> None:
+    def record_subscription(self, subscription: dict, occurred_at: Optional[str] = None) -> None:
         subscription_id = subscription.get("id")
         customer_id = subscription.get("customer_id")
         status = subscription.get("status")
         if not subscription_id or not customer_id or not status:
             return
+        if not self._matching_items(subscription):
+            status = "canceled"  # not (or no longer) a Measulor plan
+        version = subscription.get("updated_at") or occurred_at
         with self.engine.begin() as conn:
-            self._upsert_subscription(conn, subscription_id, customer_id, status)
+            row = conn.execute(select(subscriptions).where(
+                subscriptions.c.subscription_id == subscription_id)).first()
+            if row is None and status not in ACTIVE_SUBSCRIPTION_STATUSES and not self._matching_items(subscription):
+                return
+            incoming, stored = _parse_time(version), _parse_time(row.paddle_updated_at if row else None)
+            if incoming and stored and incoming < stored:
+                logger.info("Ignoring out-of-order update for %s", subscription_id)
+                return
+            self._upsert_subscription(conn, subscription_id, customer_id, status, version=version)
 
     def record_refund(self, adjustment: dict) -> None:
-        if adjustment.get("action") != "refund" or adjustment.get("status") != "approved":
+        if adjustment.get("action") not in REVOKING_ADJUSTMENTS or adjustment.get("status") != "approved":
             return
         transaction_id = adjustment.get("transaction_id")
         with self.engine.begin() as conn:
@@ -148,13 +180,15 @@ class EntitlementStore:
             conn.execute(credits.insert().values(customer_id=customer_id, balance=amount))
 
     @staticmethod
-    def _upsert_subscription(conn, subscription_id, customer_id, status, only_if_missing=False):
+    def _upsert_subscription(conn, subscription_id, customer_id, status, only_if_missing=False, version=None):
         exists = conn.execute(select(subscriptions.c.subscription_id)
                               .where(subscriptions.c.subscription_id == subscription_id)).first()
         if exists:
             if not only_if_missing:
                 conn.execute(update(subscriptions).where(subscriptions.c.subscription_id == subscription_id)
-                             .values(status=status, customer_id=customer_id, updated_at=utcnow()))
+                             .values(status=status, customer_id=customer_id, paddle_updated_at=version,
+                                     updated_at=utcnow()))
         else:
             conn.execute(subscriptions.insert().values(
-                subscription_id=subscription_id, customer_id=customer_id, status=status))
+                subscription_id=subscription_id, customer_id=customer_id, status=status,
+                paddle_updated_at=version))

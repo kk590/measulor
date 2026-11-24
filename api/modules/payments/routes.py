@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, jsonify, request, session
 
@@ -12,6 +13,19 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("payments", __name__, url_prefix="/api/payments")
 
 TRANSACTION_ID = re.compile(r"^txn_[a-z0-9]{26}$")
+# Fresh checkouts can be claimed by transaction ID alone; older receipts also need the buyer's email.
+CLAIM_WITHOUT_EMAIL = timedelta(hours=2)
+
+
+def _is_recent(transaction: dict) -> bool:
+    stamp = transaction.get("billed_at") or transaction.get("created_at")
+    if not stamp:
+        return False
+    try:
+        when = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) - when <= CLAIM_WITHOUT_EMAIL
 
 
 def _services():
@@ -39,7 +53,9 @@ def claim_transaction():
     config, store, paddle = _services()
     if paddle is None:
         return jsonify({"success": False, "message": "Payments are not configured"}), 503
-    transaction_id = (request.get_json(silent=True) or {}).get("transaction_id", "").strip()
+    body = request.get_json(silent=True) or {}
+    transaction_id = str(body.get("transaction_id", "")).strip()
+    email = str(body.get("email", "")).strip().lower()
     if not TRANSACTION_ID.match(transaction_id):
         return jsonify({"success": False, "message": "Invalid transaction ID"}), 400
     try:
@@ -48,9 +64,23 @@ def claim_transaction():
         logger.warning("Claim of %s failed: %s", transaction_id, exc)
         return jsonify({"success": False, "message": "Transaction not found"}), 404
 
-    if transaction.get("status") not in ("paid", "completed"):
+    if transaction.get("status") not in ("paid", "completed") or store.awaiting_subscription(transaction):
         return jsonify({"success": False, "pending": True,
                         "message": "Payment is still processing. Try again in a few seconds."}), 409
+    if not store.transaction_has_price(transaction):
+        return jsonify({"success": False, "message": "Transaction does not include this product"}), 400
+    if not _is_recent(transaction):
+        if not email:
+            return jsonify({"success": False, "email_required": True,
+                            "message": "Enter the email address used at checkout to restore this purchase"}), 403
+        try:
+            customer = paddle.get_customer(transaction.get("customer_id", ""))
+        except PaddleError as exc:
+            logger.warning("Customer lookup for %s failed: %s", transaction_id, exc)
+            return jsonify({"success": False, "message": "Could not verify this purchase"}), 502
+        if (customer.get("email") or "").strip().lower() != email:
+            return jsonify({"success": False, "email_required": True,
+                            "message": "That email doesn't match this purchase"}), 403
     customer_id = store.record_transaction(transaction)
     if not customer_id:
         return jsonify({"success": False, "message": "Transaction does not include this product"}), 400
@@ -103,7 +133,7 @@ def webhook():
         if event_type in ("transaction.paid", "transaction.completed"):
             store.record_transaction(data)
         elif event_type.startswith("subscription."):
-            store.record_subscription(data)
+            store.record_subscription(data, payload.get("occurred_at"))
         elif event_type in ("adjustment.created", "adjustment.updated"):
             store.record_refund(data)
     except Exception:

@@ -27,10 +27,11 @@
         <button class="btn" id="buy-btn" type="button">Subscribe</button>
         <button class="btn btn-secondary" id="portal-btn" type="button" hidden>Manage billing</button>
       </div>
-      <details>
+      <details id="restore-details">
         <summary>Already subscribed? Restore with the transaction ID (txn_...) from your Paddle receipt</summary>
         <form id="restore-form" class="row">
           <input type="text" id="restore-txn" placeholder="txn_..." pattern="txn_[a-z0-9]{26}" required>
+          <input type="email" id="restore-email" placeholder="Email used at checkout" autocomplete="email">
           <button class="btn btn-secondary" type="submit">Restore subscription</button>
         </form>
       </details>

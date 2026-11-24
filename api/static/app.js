@@ -33,14 +33,19 @@
     $("buy-btn").hidden = entitlement.subscription_active;
   }
 
-  async function claim(transactionId, attempt = 0) {
+  async function claim(transactionId, email = "", attempt = 0) {
     const { ok, status, body } = await api("/api/payments/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transaction_id: transactionId }),
+      body: JSON.stringify({ transaction_id: transactionId, email }),
     });
     if (ok) { showError(""); renderEntitlement(body.entitlement); return; }
-    if (status === 409 && attempt < 10) { setTimeout(() => claim(transactionId, attempt + 1), 2000); return; }
+    if (status === 409 && attempt < 10) { setTimeout(() => claim(transactionId, email, attempt + 1), 2000); return; }
+    if (body.email_required) {
+      $("restore-details").open = true;
+      $("restore-txn").value = transactionId;
+      $("restore-email").focus();
+    }
     showError(body.message || "Could not confirm your payment");
   }
 
@@ -105,7 +110,7 @@
 
   $("restore-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    claim($("restore-txn").value.trim());
+    claim($("restore-txn").value.trim(), $("restore-email").value.trim());
   });
 
   function setStage(stage) {
@@ -148,7 +153,12 @@
     $("results").hidden = false;
   }
 
+  const JOB_KEY = "measulor.activeJob";
+
   async function poll(jobId) {
+    localStorage.setItem(JOB_KEY, jobId);
+    $("submit-btn").disabled = true;
+    $("progress").hidden = false;
     const { ok, body } = await api(`/api/jobs/${jobId}`);
     if (!ok) { finish(); showError(body.message || "Lost track of the job"); return; }
     const job = body.job;
@@ -161,6 +171,7 @@
 
   function finish() {
     clearTimeout(pollTimer);
+    localStorage.removeItem(JOB_KEY);
     $("progress").hidden = true;
     $("submit-btn").disabled = false;
   }
@@ -193,4 +204,6 @@
   });
 
   initPayments().catch(() => showError("Could not load billing information"));
+  const activeJob = localStorage.getItem(JOB_KEY);
+  if (activeJob) poll(activeJob);
 })();

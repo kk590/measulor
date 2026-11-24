@@ -3,7 +3,7 @@ import time
 import pytest
 
 from api.modules.payments import verify_signature
-from tests.conftest import WEBHOOK_SECRET, send_webhook, sign, transaction
+from tests.conftest import PRICE_ID, WEBHOOK_SECRET, send_webhook, sign, transaction
 
 TXN = "txn_" + "a" * 26
 CUSTOMER = "ctm_01testcustomer00000000000"
@@ -57,7 +57,7 @@ def test_refund_removes_credit(app, client):
 
 def test_subscription_lifecycle(app, client):
     store = app.extensions["measulor"]["entitlements"]
-    sub = {"id": "sub_1", "customer_id": CUSTOMER, "status": "active"}
+    sub = {"id": "sub_1", "customer_id": CUSTOMER, "status": "active", "items": [{"price": {"id": PRICE_ID}}]}
     send_webhook(client, "evt_1", "subscription.created", sub)
     assert store.summary(CUSTOMER)["subscription_active"]
     send_webhook(client, "evt_2", "subscription.canceled", {**sub, "status": "canceled"})
@@ -125,3 +125,55 @@ def test_production_accepts_checkout_link_without_client_token(tmp_path):
     config.paddle_checkout_url = ""
     with pytest.raises(RuntimeError, match="PADDLE_CHECKOUT_URL"):
         config.finalize()
+
+
+def test_subscription_for_other_product_is_ignored(app, client):
+    store = app.extensions["measulor"]["entitlements"]
+    other = {"id": "sub_x", "customer_id": CUSTOMER, "status": "active", "items": [{"price": {"id": "pri_other"}}]}
+    send_webhook(client, "evt_1", "subscription.created", other)
+    assert not store.summary(CUSTOMER)["subscription_active"]
+
+
+def test_out_of_order_subscription_events(app, client):
+    store = app.extensions["measulor"]["entitlements"]
+    sub = {"id": "sub_1", "customer_id": CUSTOMER, "items": [{"price": {"id": PRICE_ID}}]}
+    send_webhook(client, "evt_2", "subscription.canceled",
+                 {**sub, "status": "canceled", "updated_at": "2026-01-02T00:00:00Z"})
+    send_webhook(client, "evt_1", "subscription.updated",
+                 {**sub, "status": "active", "updated_at": "2026-01-01T00:00:00Z"})
+    assert not store.summary(CUSTOMER)["subscription_active"]
+
+
+def test_recurring_checkout_waits_for_subscription(app, client):
+    store = app.extensions["measulor"]["entitlements"]
+    paddle = app.extensions["measulor"]["paddle"]
+    paid = transaction(TXN, status="paid", billing_cycle={"interval": "month", "frequency": 1})
+    send_webhook(client, "evt_1", "transaction.paid", paid)
+    paddle.transactions[TXN] = paid
+    assert client.post("/api/payments/claim", json={"transaction_id": TXN}).status_code == 409
+    assert store.balance(CUSTOMER) == 0
+    completed = {**paid, "status": "completed", "subscription_id": "sub_9"}
+    send_webhook(client, "evt_2", "transaction.completed", completed)
+    paddle.transactions[TXN] = completed
+    assert client.post("/api/payments/claim", json={"transaction_id": TXN}).status_code == 200
+    summary = store.summary(CUSTOMER)
+    assert summary["subscription_active"] and summary["scans_remaining"] == 0
+
+
+def test_old_receipt_requires_matching_email(app, client):
+    paddle = app.extensions["measulor"]["paddle"]
+    paddle.transactions[TXN] = transaction(TXN, billed_at="2026-01-01T00:00:00Z")
+    response = client.post("/api/payments/claim", json={"transaction_id": TXN})
+    assert response.status_code == 403 and response.get_json()["email_required"]
+    assert client.post("/api/payments/claim",
+                       json={"transaction_id": TXN, "email": "someone@else.com"}).status_code == 403
+    assert client.post("/api/payments/claim",
+                       json={"transaction_id": TXN, "email": "Buyer@Example.com"}).status_code == 200
+
+
+def test_chargeback_revokes_credit(app, client):
+    store = app.extensions["measulor"]["entitlements"]
+    send_webhook(client, "evt_1", "transaction.completed", transaction(TXN))
+    send_webhook(client, "evt_2", "adjustment.created",
+                 {"id": "adj_1", "action": "chargeback", "status": "approved", "transaction_id": TXN})
+    assert store.balance(CUSTOMER) == 0
