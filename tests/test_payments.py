@@ -177,3 +177,21 @@ def test_chargeback_revokes_credit(app, client):
     send_webhook(client, "evt_2", "adjustment.created",
                  {"id": "adj_1", "action": "chargeback", "status": "approved", "transaction_id": TXN})
     assert store.balance(CUSTOMER) == 0
+
+
+def test_chargeback_reversal_restores_credit(app, client):
+    store = app.extensions["measulor"]["entitlements"]
+    send_webhook(client, "evt_1", "transaction.completed", transaction(TXN))
+    send_webhook(client, "evt_2", "adjustment.created",
+                 {"id": "adj_1", "action": "chargeback", "status": "approved", "transaction_id": TXN})
+    send_webhook(client, "evt_3", "adjustment.created",
+                 {"id": "adj_2", "action": "chargeback_reverse", "status": "approved", "transaction_id": TXN})
+    assert store.balance(CUSTOMER) == 1
+
+
+def test_cancellation_blocks_restoring_old_receipt(app, client):
+    store = app.extensions["measulor"]["entitlements"]
+    send_webhook(client, "evt_1", "subscription.canceled",
+                 {"id": "sub_1", "customer_id": CUSTOMER, "status": "canceled", "items": []})
+    store.record_transaction(transaction(TXN, subscription_id="sub_1"))
+    assert not store.summary(CUSTOMER)["subscription_active"]

@@ -93,8 +93,6 @@ class EntitlementStore:
         with self.engine.begin() as conn:
             row = conn.execute(select(subscriptions).where(
                 subscriptions.c.subscription_id == subscription_id)).first()
-            if row is None and status not in ACTIVE_SUBSCRIPTION_STATUSES and not self._matching_items(subscription):
-                return
             incoming, stored = _parse_time(version), _parse_time(row.paddle_updated_at if row else None)
             if incoming and stored and incoming < stored:
                 logger.info("Ignoring out-of-order update for %s", subscription_id)
@@ -102,9 +100,15 @@ class EntitlementStore:
             self._upsert_subscription(conn, subscription_id, customer_id, status, version=version)
 
     def record_refund(self, adjustment: dict) -> None:
-        if adjustment.get("action") not in REVOKING_ADJUSTMENTS or adjustment.get("status") != "approved":
+        action = adjustment.get("action")
+        if adjustment.get("status") != "approved":
             return
         transaction_id = adjustment.get("transaction_id")
+        if action == "chargeback_reverse":
+            self._restore_purchase(transaction_id)
+            return
+        if action not in REVOKING_ADJUSTMENTS:
+            return
         with self.engine.begin() as conn:
             row = conn.execute(select(purchases).where(purchases.c.transaction_id == transaction_id)).first()
             if not row or row.status == "refunded":
@@ -115,6 +119,18 @@ class EntitlementStore:
                 balance = self.balance(row.customer_id, conn)
                 conn.execute(update(credits).where(credits.c.customer_id == row.customer_id)
                              .values(balance=max(0, balance - row.scans_granted)))
+
+    def _restore_purchase(self, transaction_id: str) -> None:
+        with self.engine.begin() as conn:
+            row = conn.execute(select(purchases).where(purchases.c.transaction_id == transaction_id)).first()
+            if not row or row.status != "refunded":
+                return
+            conn.execute(update(purchases).where(purchases.c.transaction_id == transaction_id)
+                         .values(status="paid"))
+            if row.scans_granted:
+                balance = self.balance(row.customer_id, conn)
+                conn.execute(update(credits).where(credits.c.customer_id == row.customer_id)
+                             .values(balance=balance + row.scans_granted))
 
     def mark_event_processed(self, event_id: str, event_type: str) -> bool:
         """Return False if this webhook event was already handled."""
