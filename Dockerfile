@@ -1,25 +1,29 @@
-# Dockerfile for Flask API on Render
-FROM python:3.10-slim-bookworm
+FROM python:3.11-slim-bookworm
 
-# Install system dependencies for OpenCV headless and other packages
-RUN apt-get update && apt-get install -y libsm6 libxrender1 libglib2.0-0 libgomp1 libgl1 colmap && rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    APP_ENV=production \
+    DATA_DIR=/app/data \
+    PORT=5000
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libgomp1 curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-
-# Copy requirements first for better caching
 COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Install Python packages
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy only the API code (not the GUI)
 COPY api ./api
-COPY railway_app.py .
+COPY main.py gunicorn.conf.py ./
 
-# Expose port
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN useradd --create-home --uid 10001 measulor && mkdir -p /app/data && chown -R measulor /app/data \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
+VOLUME ["/app/data"]
 EXPOSE 5000
 
-ENV FLASK_APP=api/index.py
-ENV FLASK_ENV=production
-
-# Run Flask app
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD curl -fsS http://localhost:${PORT}/health || exit 1
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "api.index:app"]

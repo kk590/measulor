@@ -1,28 +1,16 @@
-version: '3.8'
-
 services:
   measulor:
     build: .
     container_name: measulor-app
-    ports:
-      - "5000:5000"
-    environment:
-      - FLASK_ENV=production
-      - PYTHONUNBUFFERED=1
+    env_file: .env
+    expose:
+      - "5000"
     volumes:
-      - ./measurements:/app/measurements
-      - ./logs:/app/logs
+      - measulor-data:/app/data
     restart: unless-stopped
     networks:
       - measulor-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
-  # Optional: Nginx reverse proxy
   nginx:
     image: nginx:alpine
     container_name: measulor-nginx
@@ -43,5 +31,4 @@ networks:
     driver: bridge
 
 volumes:
-  measurements:
-  logs:
+  measulor-data:

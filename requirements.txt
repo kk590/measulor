@@ -1,10 +1,10 @@
-Flask
-Pillow
-requests
-flask-cors
-opencv-python-headless
-# 3D Reconstruction Libraries
-pycolmap
-scipy
-numpy
-open3d
+Flask>=3.0,<4
+flask-cors>=4.0
+gunicorn>=22.0
+requests>=2.31
+SQLAlchemy>=2.0,<3
+numpy>=1.26
+scipy>=1.11
+opencv-python-headless>=4.9
+pycolmap>=3.11
+psycopg2-binary>=2.9

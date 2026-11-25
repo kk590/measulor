@@ -1,12 +1,29 @@
 services:
   - type: web
-    name: measulor-api
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements-full.txt
-    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT api.index:app
+    name: measulor
+    runtime: docker
+    plan: standard
+    healthCheckPath: /health
+    disk:
+      name: measulor-data
+      mountPath: /app/data
+      sizeGB: 10
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PYTHONUNBUFFERED
-        value: 1
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PADDLE_ENVIRONMENT
+        value: production
+      - key: PADDLE_API_KEY
+        sync: false
+      - key: PADDLE_CLIENT_TOKEN
+        sync: false
+      - key: PADDLE_PRICE_ID
+        sync: false
+      - key: PADDLE_CHECKOUT_URL
+        sync: false
+      - key: PRICE_LABEL
+        value: "₹199/month"
+      - key: PADDLE_WEBHOOK_SECRET
+        sync: false
