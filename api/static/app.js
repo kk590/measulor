@@ -108,6 +108,17 @@
     else showError(body.message || "Could not open billing portal");
   });
 
+  const dropzone = $("dropzone");
+  $("video").addEventListener("change", () => {
+    const file = $("video").files[0];
+    dropzone.classList.toggle("has-file", Boolean(file));
+    $("dz-title").textContent = file
+      ? `${file.name} \u00b7 ${(file.size / 1048576).toFixed(1)} MB`
+      : "Drop a video here or browse";
+  });
+  ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, () => dropzone.classList.add("dragover")));
+  ["dragleave", "drop"].forEach((type) => dropzone.addEventListener(type, () => dropzone.classList.remove("dragover")));
+
   $("restore-form").addEventListener("submit", (event) => {
     event.preventDefault();
     claim($("restore-txn").value.trim(), $("restore-email").value.trim());

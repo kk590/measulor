@@ -9,19 +9,51 @@
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <nav class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>MEASULOR</div>
+    <div class="status-pill"><span class="dot"></span>SYSTEM ONLINE</div>
+  </nav>
+
   <main class="container">
-    <header>
-      <h1>Measulor</h1>
-      <p class="tagline">Video &rarr; 3D model &rarr; body measurements</p>
-      <ol class="steps" id="steps">
-        <li data-stage="video">Video</li>
-        <li data-stage="reconstruction">3D model</li>
-        <li data-stage="measurements">Measurements</li>
-      </ol>
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">// AI 3D BODY SCANNER</p>
+        <h1>Body measurements<br><span class="gradient">from a single video</span></h1>
+        <p class="tagline">Upload a walk-around video. Measulor rebuilds you as a 3D point cloud and measures it in centimetres.</p>
+        <ol class="steps" id="steps">
+          <li data-stage="video"><span class="node">01</span><span class="step-label">Video</span></li>
+          <li data-stage="reconstruction"><span class="node">02</span><span class="step-label">3D model</span></li>
+          <li data-stage="measurements"><span class="node">03</span><span class="step-label">Measurements</span></li>
+        </ol>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <svg viewBox="0 0 200 320" class="scan-figure">
+          <defs>
+            <linearGradient id="fig" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+          <g fill="none" stroke="url(#fig)" stroke-width="1.6" stroke-linejoin="round">
+            <circle cx="100" cy="38" r="20"/>
+            <path d="M100 58v14M66 80q34-12 68 0l6 70-12 2-6-54v70l4 110h-18l-8-96-8 96H76l4-110V98l-6 54-12-2z"/>
+          </g>
+          <g stroke="#22d3ee" stroke-opacity=".35" stroke-dasharray="3 4">
+            <ellipse cx="100" cy="100" rx="40" ry="7" fill="none"/>
+            <ellipse cx="100" cy="138" rx="30" ry="6" fill="none"/>
+            <ellipse cx="100" cy="170" rx="36" ry="7" fill="none"/>
+          </g>
+          <rect class="scan-line" x="20" y="0" width="160" height="3" rx="1.5"/>
+        </svg>
+        <div class="hud hud-tl">POINT CLOUD</div>
+        <div class="hud hud-br">SFM · COLMAP</div>
+      </div>
     </header>
 
     <section class="card" id="billing" hidden>
-      <h2>Your plan</h2>
+      <div class="card-head"><span class="chip">04</span><h2>Your plan</h2></div>
       <p id="billing-status">Loading&hellip;</p>
       <div class="row">
         <button class="btn" id="buy-btn" type="button">Subscribe</button>
@@ -37,42 +69,61 @@
       </details>
     </section>
 
-    <section class="card">
-      <h2>1. Record a video</h2>
-      <ul class="tips">
-        <li>Stand in an A-pose in tight clothing, in a well lit room with a textured background.</li>
-        <li>Have someone walk slowly in a full circle around you, keeping your whole body in frame.</li>
-        <li>10&ndash;60 seconds is ideal.</li>
-      </ul>
+    <section class="card card-main">
+      <div class="card-head"><span class="chip">01</span><h2>Upload your video</h2></div>
       <form id="upload-form">
-        <label>Video file
+        <label class="dropzone" id="dropzone">
           <input type="file" id="video" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska" required>
+          <span class="dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          </span>
+          <span class="dz-title" id="dz-title">Drop a video here or <u>browse</u></span>
+          <span class="dz-sub">MP4 · MOV · WEBM · AVI · MKV &nbsp;|&nbsp; 3&ndash;120 s &nbsp;|&nbsp; up to 200 MB</span>
         </label>
-        <label>Your height (cm)
-          <input type="number" id="height" min="80" max="250" step="0.1" required placeholder="e.g. 172">
-        </label>
-        <button class="btn" type="submit" id="submit-btn">Process video</button>
+        <div class="form-row">
+          <label class="field">Your height
+            <span class="input-unit">
+              <input type="number" id="height" min="80" max="250" step="0.1" required placeholder="172">
+              <span class="unit">cm</span>
+            </span>
+          </label>
+          <button class="btn btn-glow" type="submit" id="submit-btn">
+            <span>Start 3D scan</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+          </button>
+        </div>
       </form>
+      <ul class="tips">
+        <li><span>A-pose</span>Arms slightly away from your body, tight clothing.</li>
+        <li><span>Orbit</span>Someone walks a slow full circle around you, whole body in frame.</li>
+        <li><span>Light</span>Bright room, textured background, 10&ndash;60 seconds.</li>
+      </ul>
     </section>
 
     <section class="card" id="progress" hidden>
-      <h2>2. Processing</h2>
-      <div class="spinner" id="spinner"></div>
-      <p id="status"></p>
+      <div class="card-head"><span class="chip">02</span><h2>Processing</h2></div>
+      <div class="processing">
+        <div class="spinner" id="spinner"></div>
+        <p id="status" class="mono"></p>
+      </div>
+      <div class="bar"><span></span></div>
     </section>
 
     <section class="card" id="results" hidden>
-      <h2>3. Measurements</h2>
-      <p id="confidence"></p>
+      <div class="card-head"><span class="chip">03</span><h2>Measurements</h2><p id="confidence" class="badge"></p></div>
       <table>
         <thead><tr><th>Measurement</th><th>Value</th><th>Method</th></tr></thead>
         <tbody id="measurements"></tbody>
       </table>
-      <p class="muted" id="model-stats"></p>
+      <p class="muted mono" id="model-stats"></p>
       <a class="btn btn-secondary" id="download" hidden>Download 3D model (.ply)</a>
     </section>
 
     <p class="error" id="error" role="alert" hidden></p>
+
+    <footer class="foot mono">VIDEO &rarr; 3D MODEL &rarr; MEASUREMENTS &nbsp;·&nbsp; Uploads and 3D models are deleted automatically</footer>
   </main>
 </body>
 </html>
