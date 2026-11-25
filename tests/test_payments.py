@@ -123,6 +123,7 @@ def test_production_accepts_checkout_link_without_client_token(tmp_path):
     config.payments_required = None
     assert config.finalize().require_payment
     config.paddle_checkout_url = ""
+    config.payments_required = True
     with pytest.raises(RuntimeError, match="PADDLE_CHECKOUT_URL"):
         config.finalize()
 
@@ -195,3 +196,14 @@ def test_cancellation_blocks_restoring_old_receipt(app, client):
                  {"id": "sub_1", "customer_id": CUSTOMER, "status": "canceled", "items": []})
     store.record_transaction(transaction(TXN, subscription_id="sub_1"))
     assert not store.summary(CUSTOMER)["subscription_active"]
+
+
+def test_production_without_paddle_is_free(tmp_path):
+    from api.config import Config
+    config = Config()
+    config.env = "production"
+    config.data_dir = str(tmp_path)
+    config.secret_key = "s"
+    config.paddle_api_key = config.paddle_price_id = config.paddle_checkout_url = config.paddle_client_token = ""
+    config.payments_required = None
+    assert not config.finalize().require_payment

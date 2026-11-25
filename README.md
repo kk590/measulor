@@ -17,6 +17,8 @@ video ──► 3D model ──► measurements          payments (Paddle) gates
 
 ## Payments (Paddle Billing)
 
+Payments are switched off until Paddle is configured: without the Paddle variables the app opens straight to the video upload and scans are free. Setting `PADDLE_API_KEY`, `PADDLE_PRICE_ID` and a checkout (`PADDLE_CHECKOUT_URL` or `PADDLE_CLIENT_TOKEN`) turns them on; `PAYMENTS_REQUIRED=true|false` overrides this.
+
 Plan: **₹199/month subscription** with unlimited scans while it's active. Users cancel or update their card in the Paddle customer portal ("Manage billing").
 
 1. In Paddle, create a product with a **recurring monthly price of ₹199 (INR)**. Set its `pri_...` ID as `PADDLE_PRICE_ID`.
@@ -53,7 +55,7 @@ Python 3.10 or 3.11.
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-PAYMENTS_REQUIRED=false python main.py      # http://localhost:5000, no payment needed
+python main.py      # http://localhost:5000, no payment needed until Paddle is configured
 pytest
 ```
 
@@ -69,7 +71,7 @@ docker run -p 5000:5000 --env-file .env -v measulor-data:/app/data measulor
 - `render.yaml`, `railway.json` and `docker-compose.yml` (with `nginx.conf` for TLS) all use the Dockerfile.
 - Keep `/app/data` on a persistent disk (uploads, 3D models, SQLite DB), or set `DATABASE_URL` to Postgres.
 - Gunicorn runs a single worker process that owns the job queue (`WORKER_THREADS` scans in parallel). COLMAP is CPU heavy, so use an instance with 4+ vCPUs and 4+ GB RAM.
-- The app refuses to start in production without `SECRET_KEY` and the Paddle variables.
+- The app refuses to start in production without `SECRET_KEY`, or with payments on but Paddle variables missing.
 
 ## Recording tips for accurate results
 

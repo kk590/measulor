@@ -65,7 +65,7 @@ class Config:
     def require_payment(self) -> bool:
         if self.payments_required is not None:
             return self.payments_required
-        return self.is_production or self.paddle_configured
+        return self.paddle_configured
 
     @property
     def paddle_api_base(self) -> str:
