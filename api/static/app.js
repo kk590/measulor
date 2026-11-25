@@ -116,8 +116,18 @@
       ? `${file.name} \u00b7 ${(file.size / 1048576).toFixed(1)} MB`
       : "Drop a video here or browse";
   });
-  ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, () => dropzone.classList.add("dragover")));
-  ["dragleave", "drop"].forEach((type) => dropzone.addEventListener(type, () => dropzone.classList.remove("dragover")));
+  ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, (event) => {
+    event.preventDefault();
+    dropzone.classList.add("dragover");
+  }));
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+  dropzone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (!event.dataTransfer || !event.dataTransfer.files.length) return;
+    $("video").files = event.dataTransfer.files;
+    $("video").dispatchEvent(new Event("change"));
+  });
 
   $("restore-form").addEventListener("submit", (event) => {
     event.preventDefault();
