@@ -61,6 +61,10 @@ pytest
 
 For checkout testing, use Paddle **sandbox** credentials and leave `PAYMENTS_REQUIRED` unset.
 
+## Frontend demo (GitHub Pages)
+
+`python scripts/build_pages.py site` builds a static, demo-mode copy of the UI (sample results, nothing is uploaded) into `site/`. `.github/workflows/pages.yml` publishes it to the `gh-pages` branch on every push to `main`.
+
 ## Deploying
 
 ```bash
