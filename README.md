@@ -61,17 +61,22 @@ pytest
 
 For checkout testing, use Paddle **sandbox** credentials and leave `PAYMENTS_REQUIRED` unset.
 
-## Frontend demo (GitHub Pages)
+## Frontend demo (GitHub Pages / Vercel)
 
-`python scripts/build_pages.py site` builds a static, demo-mode copy of the UI (sample results, nothing is uploaded) into `site/`. `.github/workflows/pages.yml` publishes it to the `gh-pages` branch on every push to `main`.
+`python scripts/build_pages.py site` builds a static, demo-mode copy of the UI (sample results, nothing is uploaded) into `site/`.
 
-## Deploy to Render
+- **GitHub Pages:** `.github/workflows/pages.yml` publishes it to the `gh-pages` branch on every push to `main`.
+- **Vercel:** `vercel.json` builds the same static demo into `public/` on every deploy. There is **no license activation page** — the old portal is gone. Production on Vercel is the demo frontend only.
+
+The full pipeline (COLMAP, disk, long CPU jobs) is not suitable for Vercel serverless. Use Render, Railway, or Docker for the real backend.
+
+## Deploy to Render (full production backend)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kk590/measulor)
 
 The button reads `render.yaml`: one Docker web service (Standard plan, Singapore) with a 10 GB disk at `/app/data` and a generated `SECRET_KEY`. Leave the Paddle fields empty to launch with free scans; fill them in later under **Environment** and payments switch on after the redeploy. Then point the Paddle webhook at `https://<your-service>.onrender.com/api/payments/webhook`.
 
-## Deploying
+## Deploying with Docker
 
 ```bash
 docker build -t measulor .
