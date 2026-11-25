@@ -3,6 +3,9 @@ services:
     name: measulor
     runtime: docker
     plan: standard
+    region: singapore
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     disk:
       name: measulor-data
@@ -11,6 +14,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: WORKER_THREADS
+        value: "1"
       - key: SECRET_KEY
         generateValue: true
       - key: PADDLE_ENVIRONMENT

@@ -21,7 +21,6 @@ COPY main.py gunicorn.conf.py ./
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN useradd --create-home --uid 10001 measulor && mkdir -p /app/data && chown -R measulor /app/data \
     && chmod +x /usr/local/bin/docker-entrypoint.sh
-VOLUME ["/app/data"]
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD curl -fsS http://localhost:${PORT}/health || exit 1
