@@ -9,8 +9,9 @@
     arm_length: [0.44, "estimated"], torso_length: [0.3, "estimated"],
     inseam: [0.45, "estimated"], leg_length: [0.53, "estimated"],
   };
-  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } };
-  const save = (jobs) => { try { localStorage.setItem(KEY, JSON.stringify(jobs)); } catch (_) { /* ignore */ } };
+  let memory = {};
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || memory; } catch (_) { return memory; } };
+  const save = (jobs) => { memory = jobs; try { localStorage.setItem(KEY, JSON.stringify(jobs)); } catch (_) { /* in-memory only */ } };
   const json = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), {
     status, headers: { "Content-Type": "application/json" },
   }));
