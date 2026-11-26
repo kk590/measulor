@@ -13,3 +13,5 @@ railway.json
 Procfile
 .env.example
 .github
+scripts
+pages

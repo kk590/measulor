@@ -1,8 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "python3 scripts/build_pages.py public",
   "outputDirectory": "public",
-  "installCommand": "echo 'static demo only'",
   "framework": null,
   "cleanUrls": true
 }
