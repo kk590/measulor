@@ -1,11 +1,11 @@
 (() => {
   const $ = (id) => document.getElementById(id);
-  const STAGES = ["video", "reconstruction", "measurements"];
+  const STAGES = ["photos", "pose", "measurements"];
   const STAGE_TEXT = {
     queued: "Waiting for a free worker...",
-    video: "Checking video and selecting sharp frames...",
-    reconstruction: "Building your 3D model (this can take several minutes)...",
-    measurements: "Measuring the 3D model...",
+    photos: "Reading your photos...",
+    pose: "Detecting body pose landmarks...",
+    measurements: "Computing measurements...",
   };
   let payment = { required: false };
   let pollTimer = null;
@@ -109,12 +109,12 @@
   });
 
   const dropzone = $("dropzone");
-  $("video").addEventListener("change", () => {
-    const file = $("video").files[0];
-    dropzone.classList.toggle("has-file", Boolean(file));
-    $("dz-title").textContent = file
-      ? `${file.name} \u00b7 ${(file.size / 1048576).toFixed(1)} MB`
-      : "Drop a video here or browse";
+  $("photos").addEventListener("change", () => {
+    const files = $("photos").files;
+    dropzone.classList.toggle("has-file", Boolean(files && files.length));
+    $("dz-title").textContent = files && files.length
+      ? `${files.length} photo${files.length > 1 ? "s" : ""} selected`
+      : "Drop photos here or browse";
   });
   ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, (event) => {
     event.preventDefault();
@@ -125,8 +125,8 @@
     event.preventDefault();
     dropzone.classList.remove("dragover");
     if (!event.dataTransfer || !event.dataTransfer.files.length) return;
-    $("video").files = event.dataTransfer.files;
-    $("video").dispatchEvent(new Event("change"));
+    $("photos").files = event.dataTransfer.files;
+    $("photos").dispatchEvent(new Event("change"));
   });
 
   $("restore-form").addEventListener("submit", (event) => {
@@ -166,11 +166,8 @@
       tbody.appendChild(row);
     });
     $("confidence").textContent = `Confidence: ${result.confidence}`;
-    $("model-stats").textContent =
-      `3D model: ${result.model.points} points from ${result.model.registered_frames}/${result.model.total_frames} frames.`;
-    const download = $("download");
-    download.hidden = !job.has_model;
-    download.href = `/api/jobs/${job.id}/model.ply`;
+    const n = result.photos_used || result.photos?.count;
+    $("model-stats").textContent = n ? `Processed ${n} photo(s).` : "";
     $("results").hidden = false;
   }
 
@@ -180,7 +177,7 @@
     try {
       if (jobId) localStorage.setItem(JOB_KEY, jobId);
       else localStorage.removeItem(JOB_KEY);
-    } catch (_) { /* storage blocked: resume-on-reload is best effort */ }
+    } catch (_) { /* storage blocked */ }
   }
 
   async function poll(jobId) {
@@ -194,7 +191,7 @@
     $("status").textContent = STAGE_TEXT[job.stage] || "";
     if (job.status === "completed") { finish(); renderResults(job); return; }
     if (job.status === "failed") { finish(); showError(job.error); refreshEntitlement(); return; }
-    pollTimer = setTimeout(() => poll(jobId), 3000);
+    pollTimer = setTimeout(() => poll(jobId), 1500);
   }
 
   function finish() {
@@ -215,11 +212,16 @@
     showError("");
     $("results").hidden = true;
     const form = new FormData();
-    form.append("video", $("video").files[0]);
+    const files = $("photos").files;
+    if (!files || !files.length) {
+      showError("Select at least one photo");
+      return;
+    }
+    for (let i = 0; i < files.length; i++) form.append("photos", files[i]);
     form.append("height_cm", $("height").value);
     $("submit-btn").disabled = true;
     $("progress").hidden = false;
-    $("status").textContent = "Uploading video...";
+    $("status").textContent = "Uploading photos...";
     const { ok, body } = await api("/api/jobs", { method: "POST", body: form });
     if (!ok) {
       finish();
