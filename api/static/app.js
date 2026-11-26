@@ -5,7 +5,7 @@
     queued: "Waiting for a free worker...",
     photos: "Reading your photos...",
     pose: "Detecting body pose landmarks...",
-    measurements: "Computing measurements...",
+    measurements: "Estimating height & computing measurements...",
   };
   let payment = { required: false };
   let pollTimer = null;
@@ -151,7 +151,9 @@
     const result = job.result;
     const tbody = $("measurements");
     tbody.replaceChildren();
-    Object.entries(result.measurements).forEach(([key, m]) => {
+    const entries = Object.entries(result.measurements);
+    entries.sort(([a], [b]) => (a === "height" ? -1 : b === "height" ? 1 : a.localeCompare(b)));
+    entries.forEach(([key, m]) => {
       const row = document.createElement("tr");
       const name = document.createElement("td");
       name.textContent = label(key);
@@ -167,7 +169,7 @@
     });
     $("confidence").textContent = `Confidence: ${result.confidence}`;
     const n = result.photos_used || result.photos?.count;
-    $("model-stats").textContent = n ? `Processed ${n} photo(s).` : "";
+    $("model-stats").textContent = n ? `Processed ${n} photo(s). Height estimated from pose.` : "";
     $("results").hidden = false;
   }
 
@@ -218,7 +220,6 @@
       return;
     }
     for (let i = 0; i < files.length; i++) form.append("photos", files[i]);
-    form.append("height_cm", $("height").value);
     $("submit-btn").disabled = true;
     $("progress").hidden = false;
     $("status").textContent = "Uploading photos...";

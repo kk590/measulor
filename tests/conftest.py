@@ -32,11 +32,11 @@ class FakePaddle:
         return {"urls": {"general": {"overview": f"https://portal.example/{customer_id}"}}}
 
 
-def fake_runner(photo_paths, height, work_dir, config, on_stage):
+def fake_runner(photo_paths, work_dir, config, on_stage):
     for stage in ("photos", "pose", "measurements"):
         on_stage(stage)
     return {"photos": {"count": len(photo_paths)}, "unit": "cm", "confidence": "high", "photos_used": len(photo_paths),
-            "measurements": {"height": {"value_cm": height, "method": "reference"},
+            "measurements": {"height": {"value_cm": 172.0, "method": "estimated"},
                              "shoulder_width": {"value_cm": 42.0, "method": "measured"}}}
 
 

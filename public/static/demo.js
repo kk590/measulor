@@ -21,9 +21,10 @@
     const stage = elapsed < 1 ? "photos" : elapsed < 2.5 ? "pose" : elapsed < 3.5 ? "measurements" : "done";
     const out = { id, stage, status: stage === "done" ? "completed" : "running", has_model: false };
     if (stage === "done") {
-      const measurements = { height: { value_cm: spec.height, method: "reference" } };
+      const height = spec.height;
+      const measurements = { height: { value_cm: height, method: "estimated" } };
       Object.entries(PROFILE).forEach(([key, [ratio, method]]) => {
-        measurements[key] = { value_cm: Math.round(spec.height * ratio * 10) / 10, method };
+        measurements[key] = { value_cm: Math.round(height * ratio * 10) / 10, method };
       });
       out.result = { unit: "cm", confidence: "high", photos_used: spec.count || 1, measurements };
     }
@@ -38,9 +39,10 @@
       return json({ required: false, entitlement: { can_scan: true } });
     }
     if (path === "/api/jobs" && options.method === "POST") {
-      const height = parseFloat(options.body.get("height_cm")) || 170;
-      const photos = options.body.getAll ? options.body.getAll("photos") : [];
+      const photos = options.body && options.body.getAll ? options.body.getAll("photos") : [];
       const id = `demo-${Date.now()}`;
+      // Simulated estimated height from pose (demo)
+      const height = 168 + Math.floor(Math.random() * 12);
       const jobs = load();
       jobs[id] = { started: Date.now(), height, count: photos.length || 1 };
       save(jobs);

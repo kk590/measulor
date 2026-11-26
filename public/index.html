@@ -12,7 +12,7 @@
   <script src="static/app.js" defer></script>
 </head>
 <body>
-  <div class="demo-banner mono">DEMO MODE · photos → measurements · sample results on Vercel</div>
+  <div class="demo-banner mono">DEMO MODE · photos → measurements · height estimated automatically</div>
   <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-glow" aria-hidden="true"></div>
   <nav class="topbar">
@@ -24,7 +24,7 @@
       <div class="hero-text">
         <p class="eyebrow">// AI BODY MEASUREMENT</p>
         <h1>Body measurements<br><span class="gradient">from your photos</span></h1>
-        <p class="tagline">Upload full-body photos. Measulor detects pose and returns measurements in centimetres.</p>
+        <p class="tagline">Upload full-body photos. Measulor detects pose, estimates height, and returns measurements in centimetres.</p>
         <ol class="steps" id="steps">
           <li data-stage="photos"><span class="node">01</span><span class="step-label">Photos</span></li>
           <li data-stage="pose"><span class="node">02</span><span class="step-label">Pose</span></li>
@@ -38,16 +38,10 @@
         <label class="dropzone" id="dropzone">
           <input type="file" id="photos" accept="image/jpeg,image/png,image/webp" multiple required>
           <span class="dz-title" id="dz-title">Drop photos here or <u>browse</u></span>
-          <span class="dz-sub">JPG · PNG · WEBP · 1–8 full-body photos</span>
+          <span class="dz-sub">JPG · PNG · WEBP · 1–8 full-body photos · height estimated automatically</span>
         </label>
-        <div class="form-row">
-          <label class="field">Your height
-            <span class="input-unit">
-              <input type="number" id="height" min="80" max="250" step="0.1" required placeholder="172">
-              <span class="unit">cm</span>
-            </span>
-          </label>
-          <button class="btn btn-glow" type="submit" id="submit-btn"><span>Measure from photos</span></button>
+        <div class="form-actions">
+          <button class="btn btn-glow btn-block" type="submit" id="submit-btn"><span>Measure from photos</span></button>
         </div>
       </form>
     </section>
