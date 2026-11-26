@@ -29,6 +29,18 @@
       ? `${files.length} photo${files.length > 1 ? "s" : ""} selected`
       : "Drop photos here or browse";
   });
+  ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, (event) => {
+    event.preventDefault();
+    dropzone.classList.add("dragover");
+  }));
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+  dropzone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (!event.dataTransfer || !event.dataTransfer.files.length) return;
+    $("photos").files = event.dataTransfer.files;
+    $("photos").dispatchEvent(new Event("change"));
+  });
 
   function setStage(stage) {
     const current = STAGES.indexOf(stage);
@@ -98,6 +110,7 @@
     for (let i = 0; i < files.length; i++) form.append("photos", files[i]);
     $("submit-btn").disabled = true;
     $("progress").hidden = false;
+    setStage("photos");
     $("status").textContent = "Uploading photos...";
     const { ok, body } = await api("/api/jobs", { method: "POST", body: form });
     if (!ok) { finish(); showError(body.message || "Upload failed"); return; }

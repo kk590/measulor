@@ -1,4 +1,3 @@
-// Vercel demo: sample photo-measurement results (no server).
 (() => {
   const realFetch = window.fetch.bind(window);
   const KEY = "measulor.demoJobs";
@@ -41,7 +40,6 @@
     if (path === "/api/jobs" && options.method === "POST") {
       const photos = options.body && options.body.getAll ? options.body.getAll("photos") : [];
       const id = `demo-${Date.now()}`;
-      // Simulated estimated height from pose (demo)
       const height = 168 + Math.floor(Math.random() * 12);
       const jobs = load();
       jobs[id] = { started: Date.now(), height, count: photos.length || 1 };
