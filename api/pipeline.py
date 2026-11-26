@@ -1,43 +1,33 @@
-"""Orchestrates the pipeline: video -> 3D model -> measurements."""
+"""Orchestrates the pipeline: photos -> body measurements."""
 
 import logging
-from typing import Callable
+from typing import Callable, List
 
 from .config import Config
-from .modules import measurements, reconstruction, video
+from .modules import photo_measurements, photos
 
 logger = logging.getLogger(__name__)
 
-STAGES = ("video", "reconstruction", "measurements")
+STAGES = ("photos", "pose", "measurements")
 
 
 class PipelineError(RuntimeError):
     """User-facing pipeline failure."""
 
 
-def run(video_path: str, reference_height_cm: float, work_dir: str, config: Config,
+def run(photo_paths: List[str], reference_height_cm: float, work_dir: str, config: Config,
         on_stage: Callable[[str], None] = lambda stage: None) -> dict:
     try:
-        on_stage("video")
-        info = video.probe(video_path, config.max_video_seconds)
-        frames = video.extract_frames(video_path, info, config.max_frames, config.frame_max_dimension)
+        on_stage("photos")
+        images = photos.load_images(photo_paths)
 
-        on_stage("reconstruction")
-        model = reconstruction.reconstruct(frames, work_dir)
-        del frames
-
+        on_stage("pose")
         on_stage("measurements")
-        result = measurements.compute_measurements(
-            model.points, reference_height_cm,
-            camera_centers=model.camera_centers,
-            view_directions=model.view_directions,
-            up_vectors=model.up_vectors,
-        )
-    except (video.VideoError, reconstruction.ReconstructionError, measurements.MeasurementError) as exc:
+        result = photo_measurements.compute_from_photos(images, reference_height_cm)
+    except (photos.PhotoError, photo_measurements.MeasurementError) as exc:
         raise PipelineError(str(exc)) from exc
 
     return {
-        "video": info.to_dict(),
-        "model": model.stats(),
+        "photos": {"count": len(photo_paths)},
         **result,
     }

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Measulor - Body Measurements from Photos</title>
+  <link rel="stylesheet" href="static/app.css">
+  <style>
+    .demo-banner { position: sticky; top: 0; z-index: 10; text-align: center; font-size: .72rem; letter-spacing: .14em; padding: 8px; color: #04121a; background: linear-gradient(90deg, #22d3ee, #8b5cf6); }
+  </style>
+  <script src="static/demo.js" defer></script>
+  <script src="static/app.js" defer></script>
+</head>
+<body>
+  <div class="demo-banner mono">DEMO MODE · photos → measurements · sample results on Vercel</div>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <nav class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>MEASULOR</div>
+    <div class="status-pill"><span class="dot"></span>SYSTEM ONLINE</div>
+  </nav>
+  <main class="container">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">// AI BODY MEASUREMENT</p>
+        <h1>Body measurements<br><span class="gradient">from your photos</span></h1>
+        <p class="tagline">Upload full-body photos. Measulor detects pose and returns measurements in centimetres.</p>
+        <ol class="steps" id="steps">
+          <li data-stage="photos"><span class="node">01</span><span class="step-label">Photos</span></li>
+          <li data-stage="pose"><span class="node">02</span><span class="step-label">Pose</span></li>
+          <li data-stage="measurements"><span class="node">03</span><span class="step-label">Measurements</span></li>
+        </ol>
+      </div>
+    </header>
+    <section class="card card-main">
+      <div class="card-head"><span class="chip">01</span><h2>Upload your photos</h2></div>
+      <form id="upload-form">
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="photos" accept="image/jpeg,image/png,image/webp" multiple required>
+          <span class="dz-title" id="dz-title">Drop photos here or <u>browse</u></span>
+          <span class="dz-sub">JPG · PNG · WEBP · 1–8 full-body photos</span>
+        </label>
+        <div class="form-row">
+          <label class="field">Your height
+            <span class="input-unit">
+              <input type="number" id="height" min="80" max="250" step="0.1" required placeholder="172">
+              <span class="unit">cm</span>
+            </span>
+          </label>
+          <button class="btn btn-glow" type="submit" id="submit-btn"><span>Measure from photos</span></button>
+        </div>
+      </form>
+    </section>
+    <section class="card" id="progress" hidden>
+      <div class="card-head"><span class="chip">02</span><h2>Processing</h2></div>
+      <div class="processing"><div class="spinner"></div><p id="status" class="mono"></p></div>
+      <div class="bar"><span></span></div>
+    </section>
+    <section class="card" id="results" hidden>
+      <div class="card-head"><span class="chip">03</span><h2>Measurements</h2><p id="confidence" class="badge"></p></div>
+      <table><thead><tr><th>Measurement</th><th>Value</th><th>Method</th></tr></thead><tbody id="measurements"></tbody></table>
+      <p class="muted mono" id="model-stats"></p>
+    </section>
+    <p class="error" id="error" role="alert" hidden></p>
+    <footer class="foot mono">PHOTOS → POSE → MEASUREMENTS</footer>
+  </main>
+</body>
+</html>

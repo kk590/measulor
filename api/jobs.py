@@ -9,7 +9,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
@@ -46,17 +46,18 @@ class JobService:
     def job_dir(self, job_id: str) -> str:
         return os.path.join(self.jobs_dir, job_id)
 
-    def create(self, owner_id: str, video_path: str, reference_height_cm: float,
+    def create(self, owner_id: str, photo_paths: List[str], reference_height_cm: float,
                customer_id: Optional[str], charge: Optional[str]) -> str:
         job_id = str(uuid.uuid4())
         os.makedirs(self.job_dir(job_id), exist_ok=True)
         with self.engine.begin() as conn:
             conn.execute(jobs.insert().values(
                 id=job_id, owner_id=owner_id, status="queued", stage="queued",
-                reference_height_cm=int(round(reference_height_cm)), video_path=video_path,
+                reference_height_cm=int(round(reference_height_cm)),
+                video_path=json.dumps(photo_paths),
                 customer_id=customer_id, charged=1 if charge == "credit" else 0,
             ))
-        self.executor.submit(self._execute, job_id, video_path, reference_height_cm)
+        self.executor.submit(self._execute, job_id, photo_paths, reference_height_cm)
         self.cleanup_expired()
         return job_id
 
@@ -72,22 +73,19 @@ class JobService:
             "reference_height_cm": row.reference_height_cm,
             "result": json.loads(row.result_json) if row.result_json else None,
             "error": row.error if row.status == "failed" else None,
-            "has_model": row.status == "completed" and os.path.exists(self.model_path(row.id)),
+            "has_model": False,
             "created_at": row.created_at.isoformat() + "Z",
         }
-
-    def model_path(self, job_id: str) -> str:
-        return os.path.join(self.job_dir(job_id), "model.ply")
 
     def _set(self, job_id: str, **values) -> None:
         with self.engine.begin() as conn:
             conn.execute(update(jobs).where(jobs.c.id == job_id).values(updated_at=utcnow(), **values))
 
-    def _execute(self, job_id: str, video_path: str, reference_height_cm: float):
+    def _execute(self, job_id: str, photo_paths: List[str], reference_height_cm: float):
         started = time.monotonic()
-        self._set(job_id, status="running", stage="video")
+        self._set(job_id, status="running", stage="photos")
         try:
-            result = self.runner(video_path, reference_height_cm, self.job_dir(job_id), self.config,
+            result = self.runner(photo_paths, reference_height_cm, self.job_dir(job_id), self.config,
                                  on_stage=lambda stage: self._set(job_id, stage=stage))
             self._set(job_id, status="completed", stage="done", result_json=json.dumps(result), error=None)
             logger.info("Job %s completed in %.1fs", job_id, time.monotonic() - started)
@@ -95,10 +93,11 @@ class JobService:
             self._fail(job_id, str(exc))
         except Exception:
             logger.exception("Job %s crashed", job_id)
-            self._fail(job_id, "Internal error while processing the video")
+            self._fail(job_id, "Internal error while processing the photos")
         finally:
-            if video_path and os.path.exists(video_path):
-                os.remove(video_path)
+            for path in photo_paths:
+                if path and os.path.exists(path):
+                    os.remove(path)
             self._set(job_id, video_path=None)
 
     def _fail(self, job_id: str, message: str) -> None:
@@ -110,13 +109,22 @@ class JobService:
         logger.info("Job %s failed: %s", job_id, message)
 
     def _recover_interrupted(self) -> None:
-        """Fail jobs left running by a previous process and refund their scan."""
         with self.engine.connect() as conn:
             rows = conn.execute(select(jobs).where(jobs.c.status.in_(("queued", "running")))).all()
         for row in rows:
             self._fail(row.id, "Processing was interrupted by a server restart. Your scan was refunded.")
-            if row.video_path and os.path.exists(row.video_path):
-                os.remove(row.video_path)
+            if row.video_path:
+                try:
+                    paths = json.loads(row.video_path)
+                    if isinstance(paths, list):
+                        for p in paths:
+                            if p and os.path.exists(p):
+                                os.remove(p)
+                    elif os.path.exists(row.video_path):
+                        os.remove(row.video_path)
+                except Exception:
+                    if os.path.exists(row.video_path):
+                        os.remove(row.video_path)
 
     def cleanup_expired(self) -> None:
         cutoff = utcnow() - timedelta(hours=self.config.keep_artifacts_hours)

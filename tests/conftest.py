@@ -32,12 +32,12 @@ class FakePaddle:
         return {"urls": {"general": {"overview": f"https://portal.example/{customer_id}"}}}
 
 
-def fake_runner(video_path, height, work_dir, config, on_stage):
-    for stage in ("video", "reconstruction", "measurements"):
+def fake_runner(photo_paths, height, work_dir, config, on_stage):
+    for stage in ("photos", "pose", "measurements"):
         on_stage(stage)
-    return {"video": {}, "model": {"points": 1000, "registered_frames": 20, "total_frames": 20},
-            "unit": "cm", "confidence": "high", "body_points": 900,
-            "measurements": {"height": {"value_cm": height, "method": "reference"}}}
+    return {"photos": {"count": len(photo_paths)}, "unit": "cm", "confidence": "high", "photos_used": len(photo_paths),
+            "measurements": {"height": {"value_cm": height, "method": "reference"},
+                             "shoulder_width": {"value_cm": 42.0, "method": "measured"}}}
 
 
 def make_config(tmp_path, **overrides):
@@ -103,8 +103,12 @@ def transaction(txn_id, customer_id="ctm_01testcustomer00000000000", status="com
             "items": [{"price": {"id": price_id, "billing_cycle": billing_cycle}, "quantity": 1}]}
 
 
-def video_upload(name="clip.mp4"):
-    return (io.BytesIO(b"not-really-a-video"), name)
+def photo_upload(name="body.jpg"):
+    return (io.BytesIO(
+        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        b"\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f"
+        b"\xff\xd9"
+    ), name)
 
 
 def wait_for_job(client, job_id, timeout=5.0):
