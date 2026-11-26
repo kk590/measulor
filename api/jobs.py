@@ -46,18 +46,18 @@ class JobService:
     def job_dir(self, job_id: str) -> str:
         return os.path.join(self.jobs_dir, job_id)
 
-    def create(self, owner_id: str, photo_paths: List[str], reference_height_cm: float,
+    def create(self, owner_id: str, photo_paths: List[str],
                customer_id: Optional[str], charge: Optional[str]) -> str:
         job_id = str(uuid.uuid4())
         os.makedirs(self.job_dir(job_id), exist_ok=True)
         with self.engine.begin() as conn:
             conn.execute(jobs.insert().values(
                 id=job_id, owner_id=owner_id, status="queued", stage="queued",
-                reference_height_cm=int(round(reference_height_cm)),
+                reference_height_cm=0,
                 video_path=json.dumps(photo_paths),
                 customer_id=customer_id, charged=1 if charge == "credit" else 0,
             ))
-        self.executor.submit(self._execute, job_id, photo_paths, reference_height_cm)
+        self.executor.submit(self._execute, job_id, photo_paths)
         self.cleanup_expired()
         return job_id
 
@@ -70,7 +70,6 @@ class JobService:
             "id": row.id,
             "status": row.status,
             "stage": row.stage,
-            "reference_height_cm": row.reference_height_cm,
             "result": json.loads(row.result_json) if row.result_json else None,
             "error": row.error if row.status == "failed" else None,
             "has_model": False,
@@ -81,13 +80,19 @@ class JobService:
         with self.engine.begin() as conn:
             conn.execute(update(jobs).where(jobs.c.id == job_id).values(updated_at=utcnow(), **values))
 
-    def _execute(self, job_id: str, photo_paths: List[str], reference_height_cm: float):
+    def _execute(self, job_id: str, photo_paths: List[str]):
         started = time.monotonic()
         self._set(job_id, status="running", stage="photos")
         try:
-            result = self.runner(photo_paths, reference_height_cm, self.job_dir(job_id), self.config,
+            result = self.runner(photo_paths, self.job_dir(job_id), self.config,
                                  on_stage=lambda stage: self._set(job_id, stage=stage))
-            self._set(job_id, status="completed", stage="done", result_json=json.dumps(result), error=None)
+            height = 0
+            try:
+                height = int(round(float(result["measurements"]["height"]["value_cm"])))
+            except (KeyError, TypeError, ValueError):
+                pass
+            self._set(job_id, status="completed", stage="done", result_json=json.dumps(result),
+                      error=None, reference_height_cm=height)
             logger.info("Job %s completed in %.1fs", job_id, time.monotonic() - started)
         except PipelineError as exc:
             self._fail(job_id, str(exc))

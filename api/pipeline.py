@@ -15,7 +15,7 @@ class PipelineError(RuntimeError):
     """User-facing pipeline failure."""
 
 
-def run(photo_paths: List[str], reference_height_cm: float, work_dir: str, config: Config,
+def run(photo_paths: List[str], work_dir: str, config: Config,
         on_stage: Callable[[str], None] = lambda stage: None) -> dict:
     try:
         on_stage("photos")
@@ -23,7 +23,7 @@ def run(photo_paths: List[str], reference_height_cm: float, work_dir: str, confi
 
         on_stage("pose")
         on_stage("measurements")
-        result = photo_measurements.compute_from_photos(images, reference_height_cm)
+        result = photo_measurements.compute_from_photos(images)
     except (photos.PhotoError, photo_measurements.MeasurementError) as exc:
         raise PipelineError(str(exc)) from exc
 
