@@ -26,6 +26,11 @@ def run(photo_paths: List[str], work_dir: str, config: Config,
         result = photo_measurements.compute_from_photos(images)
     except (photos.PhotoError, photo_measurements.MeasurementError) as exc:
         raise PipelineError(str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Pipeline crashed")
+        raise PipelineError(
+            str(exc).strip() or "Could not process the photos"
+        ) from exp
 
     return {
         "photos": {"count": len(photo_paths)},

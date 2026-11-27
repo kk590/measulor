@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 MIN_HEIGHT_CM = 80
 MAX_HEIGHT_CM = 250
+DEFAULT_HEIGHT_CM = 170.0
 
 # Landmark indices (MediaPipe Pose)
 NOSE = 0
@@ -36,7 +37,6 @@ L_ANKLE, R_ANKLE = 27, 28
 L_HEEL, R_HEEL = 29, 30
 L_FOOT, R_FOOT = 31, 32
 
-# Circumference / length as fraction of stature when not measured from width
 RATIOS = {
     "chest_circumference": 0.555,
     "waist_circumference": 0.465,
@@ -66,35 +66,90 @@ def _dist(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.linalg.norm(a - b))
 
 
-def _xy(landmarks, index: int, width: int, height: int) -> Optional[np.ndarray]:
-    lm = landmarks[index]
-    if lm.visibility is not None and lm.visibility < 0.5:
-        return None
-    return np.array([lm.x * width, lm.y * height], dtype=np.float64)
+def _visibility(lm) -> float:
+    """Safe visibility read across MediaPipe versions / protobuf shapes."""
+    try:
+        v = getattr(lm, "visibility", None)
+        if v is None:
+            return 1.0
+        return float(v)
+    except Exception:
+        return 1.0
 
 
-def _world_xyz(world_landmarks, index: int) -> Optional[np.ndarray]:
-    lm = world_landmarks[index]
-    if lm.visibility is not None and lm.visibility < 0.3:
+def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.35) -> Optional[np.ndarray]:
+    try:
+        lm = landmarks[index]
+    except Exception:
         return None
-    return np.array([lm.x, lm.y, lm.z], dtype=np.float64)
+    if _visibility(lm) < min_vis:
+        return None
+    try:
+        return np.array([float(lm.x) * width, float(lm.y) * height], dtype=np.float64)
+    except Exception:
+        return None
+
+
+def _world_xyz(world_landmarks, index: int, min_vis: float = 0.2) -> Optional[np.ndarray]:
+    if world_landmarks is None:
+        return None
+    try:
+        lm = world_landmarks[index]
+    except Exception:
+        return None
+    if _visibility(lm) < min_vis:
+        return None
+    try:
+        return np.array([float(lm.x), float(lm.y), float(lm.z)], dtype=np.float64)
+    except Exception:
+        return None
 
 
 def _pose(image: np.ndarray):
     if mp is None:
         raise MeasurementError("mediapipe is not installed on this server")
-    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    with mp.solutions.pose.Pose(
-        static_image_mode=True,
-        model_complexity=1,
-        enable_segmentation=False,
-        min_detection_confidence=0.5,
-    ) as pose:
+
+    try:
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    except Exception as exc:
+        raise MeasurementError("Could not convert photo colour space") from exc
+
+    pose = None
+    try:
+        solutions = getattr(mp, "solutions", None)
+        if solutions is None or not hasattr(solutions, "pose"):
+            raise MeasurementError(
+                "MediaPipe Pose is unavailable on this server. Redeploy with mediapipe>=0.10,<0.11"
+            )
+        pose = solutions.pose.Pose(
+            static_image_mode=True,
+            model_complexity=1,
+            enable_segmentation=False,
+            min_detection_confidence=0.4,
+        )
         result = pose.process(rgb)
-    if not result.pose_landmarks:
+    except MeasurementError:
+        raise
+    except Exception as exc:
+        logger.exception("MediaPipe pose failed")
+        raise MeasurementError(
+            "Pose detection failed on the server. Try a clearer full-body photo or redeploy the backend."
+        ) from exc
+    finally:
+        if pose is not None:
+            try:
+                pose.close()
+            except Exception:
+                pass
+
+    if not result or not getattr(result, "pose_landmarks", None):
         return None, None
-    world = result.pose_world_landmarks.landmark if result.pose_world_landmarks else None
-    return result.pose_landmarks.landmark, world
+
+    landmarks = result.pose_landmarks.landmark
+    world = None
+    if getattr(result, "pose_world_landmarks", None):
+        world = result.pose_world_landmarks.landmark
+    return landmarks, world
 
 
 def _estimate_height_cm(world_lm) -> Optional[float]:
@@ -117,7 +172,6 @@ def _estimate_height_cm(world_lm) -> Optional[float]:
             foot_ys.append(p[1])
 
     if not head_ys or not foot_ys:
-        # Fallback: full vertical span of visible landmarks
         ys = []
         for i in range(33):
             p = _world_xyz(world_lm, i)
@@ -127,12 +181,11 @@ def _estimate_height_cm(world_lm) -> Optional[float]:
             return None
         span_m = abs(max(ys) - min(ys))
     else:
-        # World Y is vertical; direction can vary by MediaPipe version
         span_m = abs(max(head_ys) - min(foot_ys))
-        if abs(min(head_ys) - max(foot_ys)) > span_m:
-            span_m = abs(min(head_ys) - max(foot_ys))
+        alt = abs(min(head_ys) - max(foot_ys))
+        if alt > span_m:
+            span_m = alt
 
-    # Nose/ear is below crown; ankle/heel is above sole
     height_cm = span_m * 100.0 + 12.0
     if height_cm < 50 or height_cm > 280:
         return None
@@ -146,7 +199,7 @@ def _body_height_px(lm, w: int, h: int) -> Optional[float]:
         if p is not None:
             top_candidates.append(p[1])
     bottom_candidates = []
-    for idx in (L_ANKLE, R_ANKLE, L_HEEL, R_HEEL):
+    for idx in (L_ANKLE, R_ANKLE, L_HEEL, R_HEEL, L_FOOT, R_FOOT):
         p = _xy(lm, idx, w, h)
         if p is not None:
             bottom_candidates.append(p[1])
@@ -159,30 +212,35 @@ def _body_height_px(lm, w: int, h: int) -> Optional[float]:
 def _measure_from_landmarks(
     lm, world_lm, w: int, h: int
 ) -> Optional[Dict[str, Measurement]]:
-    height_cm = _estimate_height_cm(world_lm)
     body_px = _body_height_px(lm, w, h)
-    if height_cm is None or body_px is None:
+    if body_px is None:
         return None
+
+    height_cm = _estimate_height_cm(world_lm)
+    height_method = "estimated"
+    if height_cm is None:
+        # Pose is good enough for proportions; use a neutral stature fallback
+        height_cm = DEFAULT_HEIGHT_CM
+        height_method = "estimated"
 
     scale = height_cm / body_px  # px -> cm (image plane)
 
     results: Dict[str, Measurement] = {
-        "height": Measurement(height_cm, "estimated"),
+        "height": Measurement(height_cm, height_method),
     }
 
-    # Prefer world-landmark metric widths when available
     def world_width(i: int, j: int) -> Optional[float]:
         a, b = _world_xyz(world_lm, i), _world_xyz(world_lm, j)
         if a is None or b is None:
             return None
-        return _dist(a, b) * 100.0  # m -> cm
+        return _dist(a, b) * 100.0
 
     shoulder_cm = world_width(L_SHOULDER, R_SHOULDER)
     if shoulder_cm is None:
         l_sh, r_sh = _xy(lm, L_SHOULDER, w, h), _xy(lm, R_SHOULDER, w, h)
         if l_sh is not None and r_sh is not None:
             shoulder_cm = _dist(l_sh, r_sh) * scale
-    if shoulder_cm is not None:
+    if shoulder_cm is not None and shoulder_cm > 0:
         results["shoulder_width"] = Measurement(shoulder_cm, "measured")
         results["chest_circumference"] = Measurement(
             max(shoulder_cm * 2.15, height_cm * 0.45), "measured"
@@ -193,7 +251,7 @@ def _measure_from_landmarks(
         l_hip, r_hip = _xy(lm, L_HIP, w, h), _xy(lm, R_HIP, w, h)
         if l_hip is not None and r_hip is not None:
             hip_w = _dist(l_hip, r_hip) * scale
-    if hip_w is not None:
+    if hip_w is not None and hip_w > 0:
         results["hip_width"] = Measurement(hip_w, "measured")
         results["hip_circumference"] = Measurement(
             max(hip_w * 2.45, height_cm * 0.48), "measured"
@@ -235,7 +293,7 @@ def _measure_from_landmarks(
             torso = _dist(l_sh, l_hip) * scale
         elif r_sh is not None and r_hip is not None:
             torso = _dist(r_sh, r_hip) * scale
-    if torso is not None:
+    if torso is not None and torso > 0:
         results["torso_length"] = Measurement(torso, "measured")
 
     for name, ratio in RATIOS.items():
@@ -250,22 +308,37 @@ def compute_from_photos(images: List[np.ndarray]) -> dict:
         raise MeasurementError("No photos to measure")
 
     best: Optional[Tuple[int, Dict[str, Measurement]]] = None
+    last_error: Optional[str] = None
+
     for i, image in enumerate(images):
-        h, w = image.shape[:2]
-        landmarks, world = _pose(image)
-        if landmarks is None:
-            logger.info("No pose detected in photo %d", i)
-            continue
-        measured = _measure_from_landmarks(landmarks, world, w, h)
-        if measured is None:
-            continue
-        score = sum(1 for m in measured.values() if m.method == "measured")
-        if best is None or score > best[0]:
-            best = (score, measured)
+        try:
+            if image is None or getattr(image, "size", 0) == 0:
+                last_error = f"Photo {i + 1} is empty or unreadable"
+                continue
+            h, w = image.shape[:2]
+            landmarks, world = _pose(image)
+            if landmarks is None:
+                logger.info("No pose detected in photo %d", i)
+                last_error = "No full-body pose detected"
+                continue
+            measured = _measure_from_landmarks(landmarks, world, w, h)
+            if measured is None:
+                last_error = "Pose found but body landmarks incomplete (need head-to-feet visible)"
+                continue
+            score = sum(1 for m in measured.values() if m.method == "measured")
+            if best is None or score > best[0]:
+                best = (score, measured)
+        except MeasurementError as exc:
+            last_error = str(exc)
+            logger.warning("Photo %d measurement error: %s", i, exc)
+        except Exception:
+            logger.exception("Unexpected failure on photo %d", i)
+            last_error = "Unexpected failure while analysing a photo"
 
     if best is None:
+        detail = last_error or "Could not detect a full body pose"
         raise MeasurementError(
-            "Could not detect a full body pose. Use a clear full-body photo, A-pose, good lighting."
+            f"{detail}. Use a clear full-body photo, A-pose, bright even lighting, head to feet visible."
         )
 
     score, results = best

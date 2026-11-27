@@ -95,14 +95,23 @@ class JobService:
                       error=None, reference_height_cm=height)
             logger.info("Job %s completed in %.1fs", job_id, time.monotonic() - started)
         except PipelineError as exc:
-            self._fail(job_id, str(exc))
-        except Exception:
+            self._fail(job_id, str(exc) or "Could not process the photos")
+        except Exception as exc:
             logger.exception("Job %s crashed", job_id)
-            self._fail(job_id, "Internal error while processing the photos")
+            # Prefer a short actionable message over a blank internal error
+            message = str(exc).strip()
+            if not message or len(message) > 240:
+                message = "Internal error while processing the photos. Try a clear full-body photo or check server logs."
+            else:
+                message = f"Processing failed: {message}"
+            self._fail(job_id, message)
         finally:
             for path in photo_paths:
                 if path and os.path.exists(path):
-                    os.remove(path)
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        logger.warning("Could not remove upload %s", path)
             self._set(job_id, video_path=None)
 
     def _fail(self, job_id: str, message: str) -> None:
