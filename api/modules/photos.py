@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "bmp"}
 MIN_PHOTOS = 1
 MAX_PHOTOS = 8
-MAX_DIMENSION = 1600
-MIN_SIDE = 200
+MAX_DIMENSION = 1280
+MIN_SIDE = 160
 
 
 class PhotoError(ValueError):
@@ -57,17 +57,35 @@ def load_images(paths: List[str]) -> List[np.ndarray]:
     """Decode photos, reject tiny/corrupt ones, resize for speed."""
     images = []
     for path in paths:
-        image = cv2.imread(path)
+        # IMREAD_COLOR -> always 3-channel BGR uint8 when successful
+        image = cv2.imread(path, cv2.IMREAD_COLOR)
+        if image is None:
+            # Fallback via numpy for some webp/ odd encodings
+            data = np.fromfile(path, dtype=np.uint8)
+            image = cv2.imdecode(data, cv2.IMREAD_COLOR)
         if image is None:
             raise PhotoError(f"Could not decode image: {os.path.basename(path)}")
+
+        if image.dtype != np.uint8:
+            image = np.clip(image, 0, 255).astype(np.uint8)
+        if image.ndim == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        elif image.ndim == 3 and image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+
         h, w = image.shape[:2]
         if min(h, w) < MIN_SIDE:
-            raise PhotoError("Photo is too small. Use at least 200px on the short side")
+            raise PhotoError("Photo is too small. Use at least 160px on the short side")
+
         scale = MAX_DIMENSION / float(max(h, w))
         if scale < 1.0:
             image = cv2.resize(
                 image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
             )
+
+        if not image.flags["C_CONTIGUOUS"]:
+            image = np.ascontiguousarray(image)
         images.append(image)
+
     logger.info("Loaded %d photo(s)", len(images))
     return images

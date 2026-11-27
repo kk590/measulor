@@ -8,6 +8,7 @@ anthropometric ratios of stature when not measured directly.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -47,6 +48,10 @@ RATIOS = {
     "leg_length": 0.530,
 }
 
+_pose_lock = threading.Lock()
+_pose_instance = None
+_pose_init_error: Optional[str] = None
+
 
 class MeasurementError(ValueError):
     """Raised when measurements cannot be computed from photos."""
@@ -75,7 +80,7 @@ def _visibility(lm) -> float:
         return 1.0
 
 
-def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.35) -> Optional[np.ndarray]:
+def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.3) -> Optional[np.ndarray]:
     try:
         lm = landmarks[index]
     except Exception:
@@ -88,7 +93,7 @@ def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.35) -
         return None
 
 
-def _world_xyz(world_landmarks, index: int, min_vis: float = 0.2) -> Optional[np.ndarray]:
+def _world_xyz(world_landmarks, index: int, min_vis: float = 0.15) -> Optional[np.ndarray]:
     if world_landmarks is None:
         return None
     try:
@@ -103,43 +108,100 @@ def _world_xyz(world_landmarks, index: int, min_vis: float = 0.2) -> Optional[np
         return None
 
 
-def _pose(image: np.ndarray):
-    if mp is None:
-        raise MeasurementError("mediapipe is not installed on this server")
+def _to_rgb_uint8(image: np.ndarray) -> np.ndarray:
+    """MediaPipe requires contiguous RGB uint8 HWC."""
+    if image is None or getattr(image, "size", 0) == 0:
+        raise MeasurementError("Empty image")
+    arr = np.asarray(image)
+    if arr.ndim == 2:
+        arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
+    elif arr.ndim == 3 and arr.shape[2] == 4:
+        arr = cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
+    elif arr.ndim != 3 or arr.shape[2] != 3:
+        raise MeasurementError(f"Unsupported image shape {getattr(arr, 'shape', None)}")
 
-    try:
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    except Exception as exc:
-        raise MeasurementError("Could not convert photo colour space") from exc
+    if arr.dtype != np.uint8:
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
 
-    pose = None
-    result = None
-    try:
+    # OpenCV loads BGR; convert to RGB for MediaPipe
+    rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
+    if not rgb.flags["C_CONTIGUOUS"]:
+        rgb = np.ascontiguousarray(rgb)
+    return rgb
+
+
+def _get_pose():
+    """Lazy singleton Pose — creating/closing per image is slow and flaky under gunicorn threads."""
+    global _pose_instance, _pose_init_error
+    if _pose_instance is not None:
+        return _pose_instance
+    if _pose_init_error is not None:
+        raise MeasurementError(_pose_init_error)
+
+    with _pose_lock:
+        if _pose_instance is not None:
+            return _pose_instance
+        if _pose_init_error is not None:
+            raise MeasurementError(_pose_init_error)
+
+        if mp is None:
+            _pose_init_error = "mediapipe is not installed on this server"
+            raise MeasurementError(_pose_init_error)
+
         solutions = getattr(mp, "solutions", None)
         if solutions is None or not hasattr(solutions, "pose"):
-            raise MeasurementError(
-                "MediaPipe Pose is unavailable on this server. Redeploy with mediapipe>=0.10,<0.11"
+            _pose_init_error = (
+                "MediaPipe Pose is unavailable. Redeploy with mediapipe 0.10.9–0.10.14"
             )
-        pose = solutions.pose.Pose(
-            static_image_mode=True,
-            model_complexity=0,
-            enable_segmentation=False,
-            min_detection_confidence=0.4,
-        )
-        result = pose.process(rgb)
-    except MeasurementError:
-        raise
-    except Exception as exc:
-        logger.exception("MediaPipe pose failed")
-        raise MeasurementError(
-            "Pose detection failed on the server. Try a clearer full-body photo."
-        ) from exc
-    finally:
-        if pose is not None:
+            raise MeasurementError(_pose_init_error)
+
+        try:
+            _pose_instance = solutions.pose.Pose(
+                static_image_mode=True,
+                model_complexity=0,
+                enable_segmentation=False,
+                min_detection_confidence=0.35,
+                min_tracking_confidence=0.35,
+            )
+            # Warm-up so first user request does not pay model-load cost / race
+            blank = np.zeros((256, 192, 3), dtype=np.uint8)
+            _pose_instance.process(blank)
+            logger.info("MediaPipe Pose initialised")
+        except Exception as exc:
+            logger.exception("Failed to initialise MediaPipe Pose")
+            _pose_init_error = f"Pose engine failed to start: {type(exc).__name__}: {exc}"
+            _pose_instance = None
+            raise MeasurementError(_pose_init_error) from exc
+
+        return _pose_instance
+
+
+def _pose(image: np.ndarray):
+    rgb = _to_rgb_uint8(image)
+    pose = _get_pose()
+
+    with _pose_lock:
+        try:
+            result = pose.process(rgb)
+        except Exception as exc:
+            logger.exception("MediaPipe pose.process failed")
+            # Recreate once in case the graph is in a bad state
+            global _pose_instance
             try:
-                pose.close()
+                if _pose_instance is not None:
+                    _pose_instance.close()
             except Exception:
                 pass
+            _pose_instance = None
+            try:
+                pose = _get_pose()
+                result = pose.process(rgb)
+            except Exception as exc2:
+                logger.exception("MediaPipe pose retry failed")
+                raise MeasurementError(
+                    f"Pose detection failed ({type(exc2).__name__}). "
+                    "Try another photo or redeploy the backend."
+                ) from exc2
 
     if not result or not getattr(result, "pose_landmarks", None):
         return None, None
@@ -299,6 +361,12 @@ def compute_from_photos(images: List[np.ndarray]) -> dict:
     if not images:
         raise MeasurementError("No photos to measure")
 
+    # Ensure pose engine can start before looping images
+    try:
+        _get_pose()
+    except MeasurementError:
+        raise
+
     best: Optional[Tuple[int, Dict[str, Measurement]]] = None
     last_error: Optional[str] = None
 
@@ -311,7 +379,7 @@ def compute_from_photos(images: List[np.ndarray]) -> dict:
             landmarks, world = _pose(image)
             if landmarks is None:
                 logger.info("No pose detected in photo %d", i)
-                last_error = "No full-body pose detected"
+                last_error = "No full-body pose detected in the photo"
                 continue
             measured = _measure_from_landmarks(landmarks, world, w, h)
             if measured is None:
@@ -321,17 +389,18 @@ def compute_from_photos(images: List[np.ndarray]) -> dict:
             if best is None or score > best[0]:
                 best = (score, measured)
         except MeasurementError as exc:
-            last_error = str(exc)
+            last_error = str(exc).rstrip(".")
             logger.warning("Photo %d measurement error: %s", i, exc)
         except Exception:
             logger.exception("Unexpected failure on photo %d", i)
             last_error = "Unexpected failure while analysing a photo"
 
     if best is None:
-        detail = last_error or "Could not detect a full body pose"
-        raise MeasurementError(
-            f"{detail}. Use a clear full-body photo, A-pose, bright even lighting, head to feet visible."
-        )
+        detail = (last_error or "Could not detect a full body pose").rstrip(".")
+        tip = "Use a clear full-body photo, A-pose, bright even lighting, head to feet visible"
+        if tip.lower() in detail.lower():
+            raise MeasurementError(detail + ".")
+        raise MeasurementError(f"{detail}. {tip}.")
 
     score, results = best
     confidence = "high" if score >= 6 else "medium" if score >= 3 else "low"
