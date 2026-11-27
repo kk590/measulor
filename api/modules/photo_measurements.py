@@ -8,6 +8,7 @@ anthropometric ratios of stature when not measured directly.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -25,7 +26,6 @@ MIN_HEIGHT_CM = 80
 MAX_HEIGHT_CM = 250
 DEFAULT_HEIGHT_CM = 170.0
 
-# Landmark indices (MediaPipe Pose)
 NOSE = 0
 L_EAR, R_EAR = 7, 8
 L_SHOULDER, R_SHOULDER = 11, 12
@@ -48,6 +48,10 @@ RATIOS = {
     "leg_length": 0.530,
 }
 
+_pose_lock = threading.Lock()
+_pose_instance = None
+_pose_init_error: Optional[str] = None
+
 
 class MeasurementError(ValueError):
     """Raised when measurements cannot be computed from photos."""
@@ -56,7 +60,7 @@ class MeasurementError(ValueError):
 @dataclass
 class Measurement:
     value_cm: float
-    method: str  # measured | estimated
+    method: str
 
     def to_dict(self) -> dict:
         return {"value_cm": round(float(self.value_cm), 1), "method": self.method}
@@ -67,7 +71,6 @@ def _dist(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def _visibility(lm) -> float:
-    """Safe visibility read across MediaPipe versions / protobuf shapes."""
     try:
         v = getattr(lm, "visibility", None)
         if v is None:
@@ -77,7 +80,7 @@ def _visibility(lm) -> float:
         return 1.0
 
 
-def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.35) -> Optional[np.ndarray]:
+def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.3) -> Optional[np.ndarray]:
     try:
         lm = landmarks[index]
     except Exception:
@@ -90,7 +93,7 @@ def _xy(landmarks, index: int, width: int, height: int, min_vis: float = 0.35) -
         return None
 
 
-def _world_xyz(world_landmarks, index: int, min_vis: float = 0.2) -> Optional[np.ndarray]:
+def _world_xyz(world_landmarks, index: int, min_vis: float = 0.15) -> Optional[np.ndarray]:
     if world_landmarks is None:
         return None
     try:
@@ -105,46 +108,86 @@ def _world_xyz(world_landmarks, index: int, min_vis: float = 0.2) -> Optional[np
         return None
 
 
-def _pose(image: np.ndarray):
-    if mp is None:
-        raise MeasurementError("mediapipe is not installed on this server")
+def _to_rgb_uint8(image: np.ndarray) -> np.ndarray:
+    if image is None or getattr(image, "size", 0) == 0:
+        raise MeasurementError("Empty image")
+    arr = np.asarray(image)
+    if arr.ndim == 2:
+        arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
+    elif arr.ndim == 3 and arr.shape[2] == 4:
+        arr = cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
+    elif arr.ndim != 3 or arr.shape[2] != 3:
+        raise MeasurementError(f"Unsupported image shape {getattr(arr, 'shape', None)}")
+    if arr.dtype != np.uint8:
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+    rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
+    if not rgb.flags["C_CONTIGUOUS"]:
+        rgb = np.ascontiguousarray(rgb)
+    return rgb
 
-    try:
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    except Exception as exc:
-        raise MeasurementError("Could not convert photo colour space") from exc
 
-    pose = None
-    try:
+def _get_pose():
+    global _pose_instance, _pose_init_error
+    if _pose_instance is not None:
+        return _pose_instance
+    if _pose_init_error is not None:
+        raise MeasurementError(_pose_init_error)
+    with _pose_lock:
+        if _pose_instance is not None:
+            return _pose_instance
+        if _pose_init_error is not None:
+            raise MeasurementError(_pose_init_error)
+        if mp is None:
+            _pose_init_error = "mediapipe is not installed on this server"
+            raise MeasurementError(_pose_init_error)
         solutions = getattr(mp, "solutions", None)
         if solutions is None or not hasattr(solutions, "pose"):
-            raise MeasurementError(
-                "MediaPipe Pose is unavailable on this server. Redeploy with mediapipe>=0.10,<0.11"
+            _pose_init_error = "MediaPipe Pose is unavailable. Redeploy with mediapipe 0.10.9–0.10.14"
+            raise MeasurementError(_pose_init_error)
+        try:
+            _pose_instance = solutions.pose.Pose(
+                static_image_mode=True,
+                model_complexity=0,
+                enable_segmentation=False,
+                min_detection_confidence=0.35,
+                min_tracking_confidence=0.35,
             )
-        pose = solutions.pose.Pose(
-            static_image_mode=True,
-            model_complexity=1,
-            enable_segmentation=False,
-            min_detection_confidence=0.4,
-        )
-        result = pose.process(rgb)
-    except MeasurementError:
-        raise
-    except Exception as exc:
-        logger.exception("MediaPipe pose failed")
-        raise MeasurementError(
-            "Pose detection failed on the server. Try a clearer full-body photo or redeploy the backend."
-        ) from exc
-    finally:
-        if pose is not None:
+            blank = np.zeros((256, 192, 3), dtype=np.uint8)
+            _pose_instance.process(blank)
+            logger.info("MediaPipe Pose initialised")
+        except Exception as exc:
+            logger.exception("Failed to initialise MediaPipe Pose")
+            _pose_init_error = f"Pose engine failed to start: {type(exc).__name__}: {exc}"
+            _pose_instance = None
+            raise MeasurementError(_pose_init_error) from exc
+        return _pose_instance
+
+
+def _pose(image: np.ndarray):
+    rgb = _to_rgb_uint8(image)
+    pose = _get_pose()
+    with _pose_lock:
+        try:
+            result = pose.process(rgb)
+        except Exception as exc:
+            logger.exception("MediaPipe pose.process failed")
+            global _pose_instance
             try:
-                pose.close()
+                if _pose_instance is not None:
+                    _pose_instance.close()
             except Exception:
                 pass
-
+            _pose_instance = None
+            try:
+                pose = _get_pose()
+                result = pose.process(rgb)
+            except Exception as exc2:
+                logger.exception("MediaPipe pose retry failed")
+                raise MeasurementError(
+                    f"Pose detection failed ({type(exc2).__name__}). Try another photo or redeploy the backend."
+                ) from exc2
     if not result or not getattr(result, "pose_landmarks", None):
         return None, None
-
     landmarks = result.pose_landmarks.landmark
     world = None
     if getattr(result, "pose_world_landmarks", None):
@@ -153,24 +196,19 @@ def _pose(image: np.ndarray):
 
 
 def _estimate_height_cm(world_lm) -> Optional[float]:
-    """Estimate stature in cm from MediaPipe world landmarks (metres, hip-centred)."""
     if world_lm is None:
         return None
-
     head_idxs = (NOSE, L_EAR, R_EAR, L_SHOULDER, R_SHOULDER)
     foot_idxs = (L_ANKLE, R_ANKLE, L_HEEL, R_HEEL, L_FOOT, R_FOOT)
-
-    head_ys = []
+    head_ys, foot_ys = [], []
     for idx in head_idxs:
         p = _world_xyz(world_lm, idx)
         if p is not None:
             head_ys.append(p[1])
-    foot_ys = []
     for idx in foot_idxs:
         p = _world_xyz(world_lm, idx)
         if p is not None:
             foot_ys.append(p[1])
-
     if not head_ys or not foot_ys:
         ys = []
         for i in range(33):
@@ -185,7 +223,6 @@ def _estimate_height_cm(world_lm) -> Optional[float]:
         alt = abs(min(head_ys) - max(foot_ys))
         if alt > span_m:
             span_m = alt
-
     height_cm = span_m * 100.0 + 12.0
     if height_cm < 50 or height_cm > 280:
         return None
@@ -193,13 +230,12 @@ def _estimate_height_cm(world_lm) -> Optional[float]:
 
 
 def _body_height_px(lm, w: int, h: int) -> Optional[float]:
-    top_candidates = []
+    top_candidates, bottom_candidates = [], []
     for idx in (NOSE, L_SHOULDER, R_SHOULDER):
         p = _xy(lm, idx, w, h)
         if p is not None:
             top_candidates.append(p[1])
-    bottom_candidates = []
-    for idx in (L_ANKLE, R_ANKLE, L_HEEL, R_HEEL, L_FOOT, R_FOOT):
+    for idx in (L_ANKLE, R_ANKLE, L_HEEL, R_HEEL, L_FOOT, R_FOOT, L_KNEE, R_KNEE):
         p = _xy(lm, idx, w, h)
         if p is not None:
             bottom_candidates.append(p[1])
@@ -209,25 +245,13 @@ def _body_height_px(lm, w: int, h: int) -> Optional[float]:
     return span if span > 20 else None
 
 
-def _measure_from_landmarks(
-    lm, world_lm, w: int, h: int
-) -> Optional[Dict[str, Measurement]]:
+def _measure_from_landmarks(lm, world_lm, w: int, h: int) -> Optional[Dict[str, Measurement]]:
     body_px = _body_height_px(lm, w, h)
     if body_px is None:
         return None
-
-    height_cm = _estimate_height_cm(world_lm)
-    height_method = "estimated"
-    if height_cm is None:
-        # Pose is good enough for proportions; use a neutral stature fallback
-        height_cm = DEFAULT_HEIGHT_CM
-        height_method = "estimated"
-
-    scale = height_cm / body_px  # px -> cm (image plane)
-
-    results: Dict[str, Measurement] = {
-        "height": Measurement(height_cm, height_method),
-    }
+    height_cm = _estimate_height_cm(world_lm) or DEFAULT_HEIGHT_CM
+    scale = height_cm / body_px
+    results: Dict[str, Measurement] = {"height": Measurement(height_cm, "estimated")}
 
     def world_width(i: int, j: int) -> Optional[float]:
         a, b = _world_xyz(world_lm, i), _world_xyz(world_lm, j)
@@ -242,9 +266,7 @@ def _measure_from_landmarks(
             shoulder_cm = _dist(l_sh, r_sh) * scale
     if shoulder_cm is not None and shoulder_cm > 0:
         results["shoulder_width"] = Measurement(shoulder_cm, "measured")
-        results["chest_circumference"] = Measurement(
-            max(shoulder_cm * 2.15, height_cm * 0.45), "measured"
-        )
+        results["chest_circumference"] = Measurement(max(shoulder_cm * 2.15, height_cm * 0.45), "measured")
 
     hip_w = world_width(L_HIP, R_HIP)
     if hip_w is None:
@@ -253,12 +275,8 @@ def _measure_from_landmarks(
             hip_w = _dist(l_hip, r_hip) * scale
     if hip_w is not None and hip_w > 0:
         results["hip_width"] = Measurement(hip_w, "measured")
-        results["hip_circumference"] = Measurement(
-            max(hip_w * 2.45, height_cm * 0.48), "measured"
-        )
-        results["waist_circumference"] = Measurement(
-            max(hip_w * 2.05, height_cm * 0.40), "measured"
-        )
+        results["hip_circumference"] = Measurement(max(hip_w * 2.45, height_cm * 0.48), "measured")
+        results["waist_circumference"] = Measurement(max(hip_w * 2.05, height_cm * 0.40), "measured")
 
     arms = []
     for sh, wr in ((L_SHOULDER, L_WRIST), (R_SHOULDER, R_WRIST)):
@@ -299,17 +317,18 @@ def _measure_from_landmarks(
     for name, ratio in RATIOS.items():
         if name not in results:
             results[name] = Measurement(height_cm * ratio, "estimated")
-
     return results
 
 
 def compute_from_photos(images: List[np.ndarray]) -> dict:
     if not images:
         raise MeasurementError("No photos to measure")
-
+    try:
+        _get_pose()
+    except MeasurementError:
+        raise
     best: Optional[Tuple[int, Dict[str, Measurement]]] = None
     last_error: Optional[str] = None
-
     for i, image in enumerate(images):
         try:
             if image is None or getattr(image, "size", 0) == 0:
@@ -318,8 +337,7 @@ def compute_from_photos(images: List[np.ndarray]) -> dict:
             h, w = image.shape[:2]
             landmarks, world = _pose(image)
             if landmarks is None:
-                logger.info("No pose detected in photo %d", i)
-                last_error = "No full-body pose detected"
+                last_error = "No full-body pose detected in the photo"
                 continue
             measured = _measure_from_landmarks(landmarks, world, w, h)
             if measured is None:
@@ -329,21 +347,19 @@ def compute_from_photos(images: List[np.ndarray]) -> dict:
             if best is None or score > best[0]:
                 best = (score, measured)
         except MeasurementError as exc:
-            last_error = str(exc)
+            last_error = str(exc).rstrip(".")
             logger.warning("Photo %d measurement error: %s", i, exc)
         except Exception:
             logger.exception("Unexpected failure on photo %d", i)
             last_error = "Unexpected failure while analysing a photo"
-
     if best is None:
-        detail = last_error or "Could not detect a full body pose"
-        raise MeasurementError(
-            f"{detail}. Use a clear full-body photo, A-pose, bright even lighting, head to feet visible."
-        )
-
+        detail = (last_error or "Could not detect a full body pose").rstrip(".")
+        tip = "Use a clear full-body photo, A-pose, bright even lighting, head to feet visible"
+        if tip.lower() in detail.lower():
+            raise MeasurementError(detail + ".")
+        raise MeasurementError(f"{detail}. {tip}.")
     score, results = best
     confidence = "high" if score >= 6 else "medium" if score >= 3 else "low"
-    logger.info("Photo measurements: %d measured values, confidence=%s", score, confidence)
     return {
         "unit": "cm",
         "confidence": confidence,
