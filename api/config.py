@@ -37,7 +37,10 @@ class Config:
     worker_threads: int = field(default_factory=lambda: _int("WORKER_THREADS", 2))
     keep_artifacts_hours: int = field(default_factory=lambda: _int("KEEP_ARTIFACTS_HOURS", 72))
 
-    paddle_environment: str = field(default_factory=lambda: os.environ.get("PADDLE_ENVIRONMENT", "sandbox"))
+    # Never silently default the Paddle environment when a client token is present.
+    paddle_environment: str = field(
+        default_factory=lambda: (os.environ.get("PADDLE_ENVIRONMENT") or "").strip()
+    )
     paddle_api_key: str = field(default_factory=lambda: os.environ.get("PADDLE_API_KEY", ""))
     paddle_client_token: str = field(default_factory=lambda: os.environ.get("PADDLE_CLIENT_TOKEN", ""))
     paddle_webhook_secret: str = field(default_factory=lambda: os.environ.get("PADDLE_WEBHOOK_SECRET", ""))
@@ -58,8 +61,12 @@ class Config:
 
     @property
     def paddle_configured(self) -> bool:
-        return bool(self.paddle_api_key and self.paddle_price_id
-                    and (self.paddle_client_token or self.paddle_checkout_url))
+        return bool(
+            self.paddle_environment
+            and self.paddle_api_key
+            and self.paddle_price_id
+            and (self.paddle_client_token or self.paddle_checkout_url)
+        )
 
     @property
     def require_payment(self) -> bool:
@@ -71,7 +78,12 @@ class Config:
     def paddle_api_base(self) -> str:
         if self.paddle_environment == "production":
             return "https://api.paddle.com"
-        return "https://sandbox-api.paddle.com"
+        if self.paddle_environment == "sandbox":
+            return "https://sandbox-api.paddle.com"
+        raise RuntimeError(
+            "PADDLE_ENVIRONMENT must be set to 'sandbox' or 'production' "
+            "(refusing to guess which Paddle account to use)"
+        )
 
     def finalize(self) -> "Config":
         if not self.database_url:
@@ -80,9 +92,28 @@ class Config:
             if self.is_production:
                 raise RuntimeError("SECRET_KEY must be set in production")
             self.secret_key = secrets.token_hex(32)
+
+        # If any client-facing Paddle credential is set, environment must be explicit.
+        if self.paddle_client_token or self.paddle_api_key or self.paddle_checkout_url:
+            if self.paddle_environment not in ("sandbox", "production"):
+                raise RuntimeError(
+                    "PADDLE_ENVIRONMENT must be 'sandbox' or 'production' when Paddle credentials are set"
+                )
+            if self.paddle_environment == "production" and self.paddle_client_token:
+                if not self.paddle_client_token.startswith("live_"):
+                    raise RuntimeError(
+                        "PADDLE_CLIENT_TOKEN must start with 'live_' when PADDLE_ENVIRONMENT=production"
+                    )
+            if self.paddle_environment == "sandbox" and self.paddle_client_token:
+                if not self.paddle_client_token.startswith("test_"):
+                    raise RuntimeError(
+                        "PADDLE_CLIENT_TOKEN must start with 'test_' when PADDLE_ENVIRONMENT=sandbox"
+                    )
+
         if self.is_production and self.require_payment:
             missing = [
                 name for name, value in (
+                    ("PADDLE_ENVIRONMENT", self.paddle_environment),
                     ("PADDLE_API_KEY", self.paddle_api_key),
                     ("PADDLE_CLIENT_TOKEN or PADDLE_CHECKOUT_URL",
                      self.paddle_client_token or self.paddle_checkout_url),

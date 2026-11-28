@@ -7,13 +7,13 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, jsonify, request, session
 
+from ...pricing_tiers import all_price_ids, load_tiers
 from .paddle import PaddleError, verify_signature
 
 logger = logging.getLogger(__name__)
 bp = Blueprint("payments", __name__, url_prefix="/api/payments")
 
 TRANSACTION_ID = re.compile(r"^txn_[a-z0-9]{26}$")
-# Fresh checkouts can be claimed by transaction ID alone; older receipts also need the buyer's email.
 CLAIM_WITHOUT_EMAIL = timedelta(hours=2)
 
 
@@ -33,23 +33,68 @@ def _services():
     return ext["config"], ext["entitlements"], ext["paddle"]
 
 
+def _request_country() -> str | None:
+    """Best-effort country from edge headers. Never invent a code for Paddle."""
+    for header in (
+        "CF-IPCountry",
+        "X-Vercel-IP-Country",
+        "X-Country-Code",
+        "CloudFront-Viewer-Country",
+    ):
+        raw = (request.headers.get(header) or "").strip().upper()
+        if not raw or raw in {"XX", "T1", "OTHERS", "UNKNOWN", "ZZ"}:
+            continue
+        if len(raw) == 2 and raw.isalpha():
+            return raw
+    return None
+
+
 @bp.get("/config")
 def payment_config():
     config, store, _ = _services()
     return jsonify({
         "required": config.require_payment,
-        "environment": config.paddle_environment,
-        "client_token": config.paddle_client_token,
-        "price_id": config.paddle_price_id,
-        "checkout_url": config.paddle_checkout_url,
+        "environment": config.paddle_environment or None,
+        "client_token": config.paddle_client_token or None,
+        "price_id": config.paddle_price_id or None,
+        "checkout_url": config.paddle_checkout_url or None,
         "price_label": config.price_label,
         "entitlement": store.summary(session.get("customer_id")),
+        "customer_email": session.get("customer_email") or None,
+        "country": _request_country(),
+    })
+
+
+@bp.get("/pricing")
+def pricing_config():
+    """Public payload for the pricing page (no server API key)."""
+    config, _, _ = _services()
+    if not config.paddle_environment:
+        return jsonify({
+            "success": False,
+            "message": "PADDLE_ENVIRONMENT is not set (must be sandbox or production)",
+        }), 503
+    if not config.paddle_client_token:
+        return jsonify({
+            "success": False,
+            "message": "PADDLE_CLIENT_TOKEN is not set",
+        }), 503
+
+    tiers = [t.to_public() for t in load_tiers()]
+    return jsonify({
+        "success": True,
+        "environment": config.paddle_environment,
+        "client_token": config.paddle_client_token,
+        "country": _request_country(),
+        "customer_email": session.get("customer_email") or None,
+        "success_path": "/welcome",
+        "tiers": tiers,
+        "price_ids": all_price_ids(),
     })
 
 
 @bp.post("/claim")
 def claim_transaction():
-    """Link a completed checkout to this browser session after verifying it with Paddle."""
     config, store, paddle = _services()
     if paddle is None:
         return jsonify({"success": False, "message": "Payments are not configured"}), 503
@@ -86,6 +131,8 @@ def claim_transaction():
         return jsonify({"success": False, "message": "Transaction does not include this product"}), 400
     session["customer_id"] = customer_id
     session.permanent = True
+    if email:
+        session["customer_email"] = email
     return jsonify({"success": True, "entitlement": store.summary(customer_id)})
 
 
@@ -106,6 +153,7 @@ def customer_portal():
 @bp.post("/logout")
 def unlink():
     session.pop("customer_id", None)
+    session.pop("customer_email", None)
     return jsonify({"success": True})
 
 
@@ -137,7 +185,7 @@ def webhook():
         elif event_type in ("adjustment.created", "adjustment.updated"):
             store.record_refund(data)
     except Exception:
-        store.unmark_event(event_id)  # let Paddle retry
+        store.unmark_event(event_id)
         logger.exception("Failed to process webhook %s (%s)", event_id, event_type)
         return jsonify({"success": False}), 500
 
