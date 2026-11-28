@@ -29,6 +29,18 @@ def index():
     return render_template("index.html")
 
 
+@bp.get("/pricing")
+def pricing_page():
+    _owner_id()
+    return render_template("pricing.html")
+
+
+@bp.get("/welcome")
+def welcome_page():
+    _owner_id()
+    return render_template("welcome.html")
+
+
 @bp.get("/health")
 def health():
     from sqlalchemy import text

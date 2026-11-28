@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing · Measulor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='pricing.css') }}">
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+  <script src="{{ url_for('static', filename='pricing.js') }}" defer></script>
+</head>
+<body class="pricing-page">
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <nav class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>MEASULOR</a>
+    <div class="status-pill"><span class="dot"></span>PLANS</div>
+  </nav>
+  <main class="container pricing-wrap">
+    <header class="hero pricing-hero">
+      <p class="eyebrow">// FOR TAILORS &amp; DESIGNERS</p>
+      <h1>Simple plans for<br><span class="gradient">photo intake</span></h1>
+      <p class="tagline">Capture client measurements from photos. Confirm critical points with your tape before final cut.</p>
+      <div class="billing-toggle" role="group" aria-label="Billing period">
+        <button type="button" class="toggle-btn is-active" data-interval="month" id="btn-month">Monthly</button>
+        <button type="button" class="toggle-btn" data-interval="year" id="btn-year">Yearly</button>
+      </div>
+    </header>
+    <p class="error" id="pricing-error" role="alert" hidden></p>
+    <div class="tier-grid" id="tier-grid" aria-busy="true">
+      <p class="muted mono loading-copy">Loading localised prices…</p>
+    </div>
+  </main>
+</body>
+</html>

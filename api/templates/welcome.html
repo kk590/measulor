@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome · Measulor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='welcome.js') }}" defer></script>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <nav class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>MEASULOR</a>
+  </nav>
+  <main class="container">
+    <header class="hero">
+      <p class="eyebrow">// YOU'RE IN</p>
+      <h1>Welcome to<br><span class="gradient">Measulor</span></h1>
+      <p class="tagline" id="welcome-copy">Confirming your subscription…</p>
+      <p class="error" id="welcome-error" role="alert" hidden></p>
+      <div class="form-actions" style="max-width:320px;margin-top:24px">
+        <a class="btn btn-glow" href="/">Start measuring</a>
+      </div>
+    </header>
+  </main>
+</body>
+</html>
